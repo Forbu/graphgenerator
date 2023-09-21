@@ -1,3 +1,5 @@
 """
-Module to create a graph dataset
+Module to test the graphGAN class
+
+
 """
