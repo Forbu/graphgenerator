@@ -13,6 +13,9 @@ and outputs a graph.
 - The discriminator takes a graph as input
 and outputs a probability distribution over the real and fake graphs.
 
-
+This model is trained with policy gradient
 
 """
+
+
+

@@ -37,10 +37,7 @@ class GraphVAE(nn.Module):
         """
         Forward pass of the GraphVAE
         """
-        latent_representation = self.encoder(graph)
-        
-        print(latent_representation.shape)
-        
+        latent_representation = self.encoder(graph)        
         probability_distribution = self.decoder(latent_representation)
         
         return latent_representation, probability_distribution
