@@ -3,6 +3,7 @@ Different util tools for graph generation
 """
 
 import torch
+from torch import nn
 
 from torch_geometric.data import Data
 from torch_geometric.utils import to_networkx
@@ -66,8 +67,29 @@ class GraphDecoder(nn.Module):
         self.hidden_dim = hidden_dim
         self.out_dim = out_dim
         self.nb_nodes = nb_nodes
+        assert self.nb_nodes > 0, "The number of nodes must be greater than 0"
+        assert self.nb_nodes * self.nb_nodes == self.out_dim, "The number of nodes must be equal to the square root of the output dimension"
         
         # Complete modelisation of the decoder
+        # basicly a MLP with multiple output : nb_nodes * nb_nodes output for the edges probability
+        self.decoder = nn.Sequential(
+            nn.Linear(self.in_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.hidden_dim),
+            nn.ReLU(),
+            nn.Linear(self.hidden_dim, self.out_dim),
+            nn.Sigmoid()
+        )
+        
+    def forward(self, latent_representation):
+        
+        # Compute the probability distribution over the edges of the graph
+        proba = self.decoder(latent_representation)
+        
+        # Reshape the probability distribution to a matrix
+        proba = proba.view(-1, self.nb_nodes, self.nb_nodes)
+        
+        return proba
         
         
     

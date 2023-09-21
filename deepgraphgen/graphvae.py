@@ -16,6 +16,7 @@ Decoder is a GNN on a dense graph who output a probability distribution over the
 """
 
 import torch
+from torch import nn
 
 class GraphVAE(nn.Module):
     """
@@ -37,6 +38,9 @@ class GraphVAE(nn.Module):
         Forward pass of the GraphVAE
         """
         latent_representation = self.encoder(graph)
+        
+        print(latent_representation.shape)
+        
         probability_distribution = self.decoder(latent_representation)
         
         return latent_representation, probability_distribution
