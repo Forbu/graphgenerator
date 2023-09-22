@@ -43,7 +43,7 @@ def generate_dataset(
 
     for _ in range(nb_graphs):
         list_graphs.append(generated_graph(graph_name, n, p, k, m, p1, p2))
-        
+
     # TODO : reorder graph with BFS (starting from node 0)
 
     return list_graphs

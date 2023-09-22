@@ -6,21 +6,16 @@ import networkx as nx
 
 from deepgraphgen.datageneration import generate_dataset, generated_graph
 
+
 def test_generate_one_graph():
-    
-    # test 
+    # test
     graph = generated_graph("erdos_renyi_graph", n=500, p=0.01)
-    
-    # 
+
+    #
     graph = generated_graph("watts_strogatz_graph", n=500, k=5, p=0.01)
-    
+
     #
     graph = generated_graph("barabasi_albert_graph", n=500, m=5)
-    
+
     #
     graph = generated_graph("random_lobster", n=500, p1=0.01, p2=0.01)
-    
-    
-    
-    
-    
