@@ -54,20 +54,25 @@ class GRAN(nn.Module):
         self.decoding_layer_edge = MLP(in_dim=hidden_dim*2, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2)
         self.decoding_layer_node = MLP(in_dim=hidden_dim, out_dim=out_dim_node, hidden_dim=hidden_dim, hidden_layers=2)
         
-    def forward(self, graph, block_index, block_edge_index):
+    def forward(self, graph, ):
         """
         Forward pass, with the new nodes block indexes
         
         Args:
             graph (torch_geometric.data.Data): the graph
-            block_index (torch.Tensor): the indexes of the nodes in the block
-            block_edge_index (torch.Tensor): the indexes of the edges in the block
+            with x (torch.Tensor): the features of the nodes
+            and edge_index (torch.Tensor): the edges of the graph
+            block_index (torch.Tensor): the indexes of the block nodes
+            block_edge_index (torch.Tensor): the indexes of the block edges
             
         Returns:
             nodes_features (torch.Tensor): the features of the nodes in the block
             edges_prob (torch.Tensor): the probability distribution over the edges of the block
         
         """
+        # retrieve the block indexes
+        block_index, block_edge_index = graph.block_index, graph.block_edge_index
+        
         # first node encoding
         nodes = graph.x
         
