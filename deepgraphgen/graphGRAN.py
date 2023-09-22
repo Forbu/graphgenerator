@@ -11,6 +11,8 @@ We have two graphs :
 
 import torch
 from torch import nn
+import torch.functional as F 
+
 from torch_geometric.nn import GATv2Conv
 
 from deepgraphgen.utils import MLP
@@ -60,10 +62,10 @@ class GRAN(nn.Module):
         
         Args:
             graph (torch_geometric.data.Data): the graph
-            with x (torch.Tensor): the features of the nodes
-            and edge_index (torch.Tensor): the edges of the graph
-            block_index (torch.Tensor): the indexes of the block nodes
-            block_edge_index (torch.Tensor): the indexes of the block edges
+                with x (torch.Tensor): the features of the nodes
+                and edge_index (torch.Tensor): the edges of the graph
+                block_index (torch.Tensor): the indexes of the block nodes
+                block_edge_index (torch.Tensor): the indexes of the block edges
             
         Returns:
             nodes_features (torch.Tensor): the features of the nodes in the block
@@ -106,9 +108,8 @@ class GRAN(nn.Module):
             nodes_features = self.gnn[i](nodes_features, graph.edge_index)
             
         # now we can decode the edges
-        # TODO finish the decoding part
         input_edges = torch.cat([nodes_features[block_edge_index[0]], nodes_features[block_edge_index[1]]], dim=1)
-        edges_prob = self.decoding_layer_edge(input_edges)
+        edges_prob = torch.sigmoid(self.decoding_layer_edge(input_edges)) # probabilities
         
         # now we can decode the nodes
         nodes_features = self.decoding_layer_node(nodes_features[block_index])
