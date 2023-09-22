@@ -45,8 +45,8 @@ def test_gran(input_graph):
     # forward pass
     nodes_features, edges_prob = gran(input_graph, block_index, block_edge_index)
     
-    assert nodes_features.shape == (1, 4)
-    assert edges_prob.shape == (1, 2)
+    assert nodes_features.shape == (1, 3)
+    assert edges_prob.shape == (2, 1)
     
 
 

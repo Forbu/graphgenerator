@@ -31,7 +31,7 @@ class GRAN(nn.Module):
         self.dim_order_embedding = dim_order_embedding
         
         # setup encoder for real node
-        self.encoder = MLP(in_dim=in_dim_node, out_dim=hidden_dim, hidden_dim=hidden_dim, hidden_layers=2)
+        self.encoder = MLP(in_dim=in_dim_node + dim_order_embedding, out_dim=hidden_dim, hidden_dim=hidden_dim, hidden_layers=2)
         
         # setup embedding for fake node
         self.fake_node = nn.Parameter(torch.randn(1, hidden_dim))
@@ -44,7 +44,7 @@ class GRAN(nn.Module):
         
         for i in range(self.nb_layer):
             if i == 0:
-                self.gnn.append(GATv2Conv(in_dim_node, hidden_dim))
+                self.gnn.append(GATv2Conv(hidden_dim, hidden_dim))
             elif i == self.nb_layer - 1:
                 self.gnn.append(GATv2Conv(hidden_dim, hidden_dim))
             else:
@@ -81,7 +81,7 @@ class GRAN(nn.Module):
             nb_nodes = (graph.batch == _).sum().item()
             
             # we create the node embedding
-            nodes_embedding = self.node_embedding[nb_nodes:]
+            nodes_embedding = self.node_embedding[-nb_nodes:]
             
             # we add the node embedding to the list
             nodes_embedding_list.append(nodes_embedding)
@@ -89,15 +89,13 @@ class GRAN(nn.Module):
         # concatenate the list
         nodes_embedding = torch.cat(nodes_embedding_list, dim=0)
         
-        # encode all nodes
+        # now we can concatenate the nodes features with the time embedding
+        nodes = torch.cat([nodes, nodes_embedding], dim=1)
         nodes_features = self.encoder(nodes)
         
         # replace the nodes_features in block_index by the fake node
         nodes_features[block_index] = self.fake_node
-        
-        # concatenate the nodes features with the nodes embedding
-        nodes_features = torch.cat([nodes_features, nodes_embedding], dim=1)
-        
+
         # now we can start the graph generation
         for i in range(self.nb_layer):
             nodes_features = self.gnn[i](nodes_features, graph.edge_index)
