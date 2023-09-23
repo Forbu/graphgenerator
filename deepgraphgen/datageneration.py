@@ -13,6 +13,8 @@ from networkx import (
     watts_strogatz_graph,
     barabasi_albert_graph,
     random_lobster,
+    bfs_edges,
+    relabel_nodes
 )
 
 
@@ -31,10 +33,22 @@ def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None
         return barabasi_albert_graph(n, m)
     elif graph_name == "random_lobster":
         return random_lobster(n, p1, p2)
-
+    
+def bfs_order(graph):
+    """
+    Function used to reorder the graph with BFS (starting from node 0)
+    """
+    list_edges_visited = list(bfs_edges(graph, 0))
+    
+    nodes_ordering = [0] + [edge[1] for edge in list_edges_visited]
+    mapping = {node: nodes_ordering.index(node) for node in nodes_ordering}
+    
+    H = relabel_nodes(graph, mapping)
+    
+    return H
 
 def generate_dataset(
-    graph_name, nb_graphs, n=None, p=None, k=None, m=None, p1=None, p2=None
+    graph_name, nb_graphs, n=None, p=None, k=None, m=None, p1=None, p2=None, bfs_order=False
 ):
     """
     Function used to generate a dataset of graphs
@@ -44,6 +58,8 @@ def generate_dataset(
     for _ in range(nb_graphs):
         list_graphs.append(generated_graph(graph_name, n, p, k, m, p1, p2))
 
-    # TODO : reorder graph with BFS (starting from node 0)
+    # reorder graph with BFS (starting from node 0)
+    if bfs_order:
+        list_graphs = [bfs_order(graph) for graph in list_graphs]
 
     return list_graphs
