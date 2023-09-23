@@ -27,7 +27,7 @@ def input_graph():
     block_index = torch.tensor([2], dtype=torch.long)
 
     # create the block edge indexes
-    block_edge_index = torch.tensor([[1, 2],
+    edge_imaginary_index = torch.tensor([[1, 2],
                                      [2, 1]], dtype=torch.long)
     
     graph = Data(x=node_features, edge_index=edge_index)
@@ -36,7 +36,7 @@ def input_graph():
     graph.batch = torch.tensor([0, 0, 0], dtype=torch.long)
     
     graph.block_index = block_index
-    graph.block_edge_index = block_edge_index
+    graph.edge_imaginary_index = edge_imaginary_index
     
     return graph
 
