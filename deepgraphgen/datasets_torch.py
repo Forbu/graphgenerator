@@ -13,6 +13,7 @@ from deepgraphgen.datageneration import generate_dataset
 
 
 def generate_data_graph(graph, nb_nodes, block_size):
+
     # now we create the block indexes (the last block_size nodes)
     block_index = torch.tensor(
         list(range(nb_nodes - block_size, nb_nodes)), dtype=torch.long
@@ -46,8 +47,10 @@ def generate_data_graph(graph, nb_nodes, block_size):
 
     # create 1 batch graph
     graph.block_index = block_index
+
     graph.edge_imaginary_index = edge_imaginary_index
     graph.edge_attr_imaginary = edge_attr_imaginary
+
 
     return graph
 
@@ -95,6 +98,7 @@ def create_imaginary_edges_index(nb_nodes, block_size, edge_index_real):
     edge_attr_imaginary = torch.stack(edge_attr_imaginary_list, dim=1)
 
     return edge_imaginary_index, edge_attr_imaginary
+
 
 
 class DatasetErdos(Dataset):

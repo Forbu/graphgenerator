@@ -91,7 +91,9 @@ class GRAN(nn.Module):
                 with x (torch.Tensor): the features of the nodes
                 and edge_index (torch.Tensor): the edges of the graph
                 block_index (torch.Tensor): the indexes of the block nodes
+
                 edge_imaginary_index (torch.Tensor): the indexes of the block edges
+
 
         Returns:
             nodes_features (torch.Tensor): the features of the nodes in the block
@@ -103,6 +105,7 @@ class GRAN(nn.Module):
             graph.block_index,
             graph.edge_imaginary_index,
         )
+
 
         # first node encoding
         nodes = graph.x
