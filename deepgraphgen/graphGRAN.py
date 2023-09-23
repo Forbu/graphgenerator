@@ -91,7 +91,9 @@ class GRAN(nn.Module):
                 with x (torch.Tensor): the features of the nodes
                 and edge_index (torch.Tensor): the edges of the graph
                 block_index (torch.Tensor): the indexes of the block nodes
-                block_edge_index (torch.Tensor): the indexes of the block edges
+
+                edge_imaginary_index (torch.Tensor): the indexes of the block edges
+
 
         Returns:
             nodes_features (torch.Tensor): the features of the nodes in the block
@@ -99,7 +101,11 @@ class GRAN(nn.Module):
 
         """
         # retrieve the block indexes
-        block_index, block_edge_index = graph.block_index, graph.block_edge_index
+        block_index, edge_imaginary_index = (
+            graph.block_index,
+            graph.edge_imaginary_index,
+        )
+
 
         # first node encoding
         nodes = graph.x
@@ -135,7 +141,10 @@ class GRAN(nn.Module):
 
         # now we can decode the edges
         input_edges = torch.cat(
-            [nodes_features[block_edge_index[0]], nodes_features[block_edge_index[1]]],
+            [
+                nodes_features[edge_imaginary_index[0]],
+                nodes_features[edge_imaginary_index[1]],
+            ],
             dim=1,
         )
         edges_prob = torch.sigmoid(
