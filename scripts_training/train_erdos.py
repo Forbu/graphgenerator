@@ -5,6 +5,8 @@ Module for training on the erdos_renyi_graph dataset
 import os 
 import sys
 
+import argparse
+
 import torch
 import lightning.pytorch as pl
 
