@@ -24,3 +24,9 @@ def test_bfs_reordering():
     
     graph_reorder = bfs_order(graph)
     
+    graph = generated_graph("grid_graph", nx=10, ny=10)
+    
+    graph_reorder = bfs_order(graph)
+    
+    
+    

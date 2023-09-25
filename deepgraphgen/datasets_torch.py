@@ -101,10 +101,7 @@ def create_imaginary_edges_index(nb_nodes, block_size, edge_index_real):
     # concatenate the list
     edge_attr_imaginary = torch.cat(edge_attr_imaginary_list, dim=0)
     
-
     return edge_imaginary_index, edge_attr_imaginary
-
-
 
 class DatasetErdos(Dataset):
     """
@@ -118,6 +115,37 @@ class DatasetErdos(Dataset):
         self.block_size = block_size
 
         self.list_graphs = generate_dataset("erdos_renyi_graph", nb_graphs, n=n, p=p)
+
+    def __len__(self):
+        return self.nb_graphs * (self.n - self.block_size)
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph_idx = idx // (self.n - self.block_size)
+        nb_nodes = (
+            self.n - (idx % (self.n - self.block_size))
+        )  # nb nodes in the current graph
+        graph = self.list_graphs[graph_idx]
+        
+        resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
+
+        if resulting_graph is None:
+            return self.__getitem__((idx + 1) % self.__len__())
+        else:
+            return resulting_graph
+
+class DatasetGrid(Dataset):
+    """
+    Dataset class for grid_graph graphs
+    """
+    def __init__(self, nb_graphs, nx, ny, block_size):
+        self.nb_graphs = nb_graphs
+        self.nx = nx
+        self.ny = ny
+        self.block_size = block_size
+        self.n = nx * ny
+
+        self.list_graphs = generate_dataset("grid_graph", nb_graphs, nx=nx, ny=ny)
 
     def __len__(self):
         return self.nb_graphs * (self.n - self.block_size)

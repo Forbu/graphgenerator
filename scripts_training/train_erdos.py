@@ -16,7 +16,7 @@ import torchmetrics
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from deepgraphgen.datasets_torch import DatasetErdos
+from deepgraphgen.datasets_torch import DatasetErdos, DatasetGrid
 from deepgraphgen.graphGRAN import GRAN
 
 
@@ -26,10 +26,10 @@ if __name__ == "__main__":
     
     # basicly we load a training and a validation dataset
     print("Loading the dataset...")
-    training_dataset = DatasetErdos(1000, 100, 0.1, 2)
+    training_dataset = DatasetGrid(1000, 10, 10, 2)
     
     print("Loading the validation dataset...")
-    validation_dataset = DatasetErdos(100, 100, 0.1, 2)
+    validation_dataset = DatasetGrid(100, 10, 10, 2)
     
     # we create the dataloader
     training_dataloader = DataLoader(

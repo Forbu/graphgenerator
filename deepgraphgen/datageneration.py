@@ -15,7 +15,8 @@ from networkx import (
     random_lobster,
     grid_graph,
     bfs_edges,
-    relabel_nodes
+    relabel_nodes,
+    convert_node_labels_to_integers
 )
 
 def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None):
@@ -41,6 +42,9 @@ def bfs_order(graph):
     """
     Function used to reorder the graph with BFS (starting from node 0)
     """
+
+    graph = convert_node_labels_to_integers(graph)
+    
     list_edges_visited = list(bfs_edges(graph, 0))
     
     nodes_ordering = [0] + [edge[1] for edge in list_edges_visited]
@@ -51,7 +55,7 @@ def bfs_order(graph):
     return H
 
 def generate_dataset(
-    graph_name, nb_graphs, n=None, p=None, k=None, m=None, p1=None, p2=None, bfs_order=False
+    graph_name, nb_graphs, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None, bfs_order_activation=True
 ):
     """
     Function used to generate a dataset of graphs
@@ -59,10 +63,10 @@ def generate_dataset(
     list_graphs = []
 
     for _ in range(nb_graphs):
-        list_graphs.append(generated_graph(graph_name, n, p, k, m, p1, p2))
+        list_graphs.append(generated_graph(graph_name, n, p, k, m, p1, p2, nx, ny))
 
     # reorder graph with BFS (starting from node 0)
-    if bfs_order:
+    if bfs_order_activation:
         list_graphs = [bfs_order(graph) for graph in list_graphs]
 
     return list_graphs
