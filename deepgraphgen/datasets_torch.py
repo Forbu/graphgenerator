@@ -21,9 +21,12 @@ def generate_data_graph(graph, nb_nodes, block_size):
 
     # now we want to select the subgraph with the first nb_nodes nodes
     graph = nx.subgraph(graph, list(range(nb_nodes)))
-
+    
     # convert to list of edges
     edges = list(graph.edges)
+    
+    if len(edges) == 0:
+        return None
 
     # now we want to go from the adjacent matrix to the edge index
     edge_index_real = torch.tensor(edges, dtype=torch.long).t().contiguous()
@@ -95,7 +98,9 @@ def create_imaginary_edges_index(nb_nodes, block_size, edge_index_real):
     # concatenate the list
     edge_imaginary_index = torch.cat(edge_imaginary_index_list, dim=1)
 
-    edge_attr_imaginary = torch.stack(edge_attr_imaginary_list, dim=1)
+    # concatenate the list
+    edge_attr_imaginary = torch.cat(edge_attr_imaginary_list, dim=0)
+    
 
     return edge_imaginary_index, edge_attr_imaginary
 
@@ -121,8 +126,13 @@ class DatasetErdos(Dataset):
         # select the graph
         graph_idx = idx // (self.n - self.block_size)
         nb_nodes = (
-            self.n - (idx % (self.n - self.block_size)) + self.block_size
+            self.n - (idx % (self.n - self.block_size))
         )  # nb nodes in the current graph
         graph = self.list_graphs[graph_idx]
+        
+        resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
 
-        return generate_data_graph(graph, nb_nodes, self.block_size)
+        if resulting_graph is None:
+            return self.__getitem__((idx + 1) % self.__len__())
+        else:
+            return resulting_graph

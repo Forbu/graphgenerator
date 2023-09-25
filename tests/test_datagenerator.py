@@ -6,7 +6,6 @@ import networkx as nx
 
 from deepgraphgen.datageneration import generate_dataset, generated_graph, bfs_order
 
-
 def test_generate_one_graph():
     # test
     graph = generated_graph("erdos_renyi_graph", n=500, p=0.01)
