@@ -13,12 +13,12 @@ from networkx import (
     watts_strogatz_graph,
     barabasi_albert_graph,
     random_lobster,
+    grid_graph,
     bfs_edges,
     relabel_nodes
 )
 
-
-def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None):
+def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None):
     """
     Functions used to generate different graphs
     """
@@ -33,7 +33,10 @@ def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None
         return barabasi_albert_graph(n, m)
     elif graph_name == "random_lobster":
         return random_lobster(n, p1, p2)
-    
+    elif graph_name == "grid_graph":
+        assert nx != None and ny != None, "define nx and ny"
+        return grid_graph(dim=[nx, ny])
+
 def bfs_order(graph):
     """
     Function used to reorder the graph with BFS (starting from node 0)
