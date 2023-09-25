@@ -11,6 +11,8 @@ import lightning.pytorch as pl
 # import dataloader from torch_geometric
 from torch_geometric.loader import DataLoader
 
+import torchmetrics
+
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -50,6 +52,9 @@ if __name__ == "__main__":
             # init the loss (binary cross entropy)
             self.loss = torch.nn.BCELoss()
             
+            # init accuracy metric
+            self.train_accuracy = torchmetrics.Accuracy(task="binary")
+            
         def forward(self, graphs):
             return self.model(graphs)
         
@@ -62,7 +67,6 @@ if __name__ == "__main__":
             # also retrieve the edge_attr_imaginary from the graph to compute the loss
             edge_attr_imaginary = graphs.edge_attr_imaginary
             
-
             # compute the loss
             loss = self.loss(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
             
@@ -77,6 +81,9 @@ if __name__ == "__main__":
             # log the loss
             self.log("train_loss", loss)
             
+            # log accuracy between the predicted and the real edge
+            self.log("train_accuracy", self.train_accuracy(edges_prob.squeeze(), edge_attr_imaginary.squeeze()).cpu().item())
+            
             return loss
         
         def validation_step(self, batch, batch_idx):
@@ -87,6 +94,9 @@ if __name__ == "__main__":
             
             # log the loss
             self.log("val_loss", loss)
+            
+            # log accuracy between the predicted and the real edge
+            self.log("val_accuracy", self.train_accuracy(edges_prob.squeeze(), edge_attr_imaginary.squeeze()).cpu().item())
             
             return loss
         
