@@ -28,5 +28,8 @@ def test_bfs_reordering():
     
     graph_reorder = bfs_order(graph)
     
+    edges = list(graph_reorder.edges)
+
+    
     
     

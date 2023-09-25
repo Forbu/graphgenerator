@@ -30,6 +30,10 @@ def generate_data_graph(graph, nb_nodes, block_size):
 
     # now we want to go from the adjacent matrix to the edge index
     edge_index_real = torch.tensor(edges, dtype=torch.long).t().contiguous()
+    edge_index_real_reverse = torch.tensor(edges[::-1], dtype=torch.long).t().contiguous()
+    
+    # we want to add the reverse edges
+    edge_index_real = torch.cat([edge_index_real, edge_index_real_reverse], dim=1)
 
     # we want to add all the imaginary edges between the block nodes
     edge_imaginary_index, edge_attr_imaginary = create_imaginary_edges_index(
