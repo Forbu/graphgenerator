@@ -13,25 +13,25 @@ from deepgraphgen.datageneration import generate_dataset
 
 
 def generate_data_graph(graph, nb_nodes, block_size):
-
     # now we create the block indexes (the last block_size nodes)
     block_index = torch.tensor(
-        list(range(nb_nodes - block_size, nb_nodes)), dtype=torch.long
+        [nb_nodes - block_size + i for i in range(block_size)], dtype=torch.long
     )
 
     # now we want to select the subgraph with the first nb_nodes nodes
     graph = nx.subgraph(graph, list(range(nb_nodes)))
-    
+
     # convert to list of edges
     edges = list(graph.edges)
-    
+
     if len(edges) == 0:
         return None
 
     # now we want to go from the adjacent matrix to the edge index
     edge_index_real = torch.tensor(edges, dtype=torch.long).t().contiguous()
-    edge_index_real_reverse = torch.tensor(edges[::-1], dtype=torch.long).t().contiguous()
-    
+    edge_index_real_reverse = edge_index_real[[1, 0]]
+
+
     # we want to add the reverse edges
     edge_index_real = torch.cat([edge_index_real, edge_index_real_reverse], dim=1)
 
@@ -57,7 +57,6 @@ def generate_data_graph(graph, nb_nodes, block_size):
 
     graph.edge_imaginary_index = edge_imaginary_index
     graph.edge_attr_imaginary = edge_attr_imaginary
-
 
     return graph
 
@@ -104,8 +103,9 @@ def create_imaginary_edges_index(nb_nodes, block_size, edge_index_real):
 
     # concatenate the list
     edge_attr_imaginary = torch.cat(edge_attr_imaginary_list, dim=0)
-    
+
     return edge_imaginary_index, edge_attr_imaginary
+
 
 class DatasetErdos(Dataset):
     """
@@ -126,11 +126,10 @@ class DatasetErdos(Dataset):
     def __getitem__(self, idx):
         # select the graph
         graph_idx = idx // (self.n - self.block_size)
-        nb_nodes = (
-            self.n - (idx % (self.n - self.block_size))
-        )  # nb nodes in the current graph
+        nb_nodes = (idx % (self.n - self.block_size)) + self.block_size
+
         graph = self.list_graphs[graph_idx]
-        
+
         resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
 
         if resulting_graph is None:
@@ -138,10 +137,12 @@ class DatasetErdos(Dataset):
         else:
             return resulting_graph
 
+
 class DatasetGrid(Dataset):
     """
     Dataset class for grid_graph graphs
     """
+
     def __init__(self, nb_graphs, nx, ny, block_size):
         self.nb_graphs = nb_graphs
         self.nx = nx
@@ -157,14 +158,14 @@ class DatasetGrid(Dataset):
     def __getitem__(self, idx):
         # select the graph
         graph_idx = idx // (self.n - self.block_size)
-        nb_nodes = (
-            self.n - (idx % (self.n - self.block_size))
-        )  # nb nodes in the current graph
+        nb_nodes = (idx % (self.n - self.block_size)) + self.block_size
+
         graph = self.list_graphs[graph_idx]
-        
+
         resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
 
         if resulting_graph is None:
+            print("None")
             return self.__getitem__((idx + 1) % self.__len__())
         else:
             return resulting_graph
