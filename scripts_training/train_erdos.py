@@ -86,10 +86,22 @@ if __name__ == "__main__":
     # we need a custom tensboard logger
     logger = pl.loggers.TensorBoardLogger("logs/", name=args.dataset_type)
 
+    # adding a checkpoint callback
+    checkpoint_callback = pl.callbacks.ModelCheckpoint(
+        monitor="val_loss",
+        dirpath="checkpoints/",
+        filename="model-{epoch:02d}-{val_loss:.2f}",
+        save_top_k=3,
+        mode="min",
+    )
+
     print("Training...")
     # we create the trainer
     trainer = pl.Trainer(
-        max_epochs=args.nb_epoch, logger=logger, accelerator=args.device
+        max_epochs=args.nb_epoch,
+        logger=logger,
+        accelerator=args.device,
+        callbacks=[checkpoint_callback],
     )
 
     # we train the model
