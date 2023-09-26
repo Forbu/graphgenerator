@@ -33,10 +33,10 @@ def xtest_dataset_erdos():
 
 
 def test_dataset_grid():
-    dataset = DatasetGrid(nb_graphs=10, nx=10, ny=10, block_size=2)
+    dataset = DatasetGrid(nb_graphs=10, nx=5, ny=5, block_size=2)
 
     # try data loader
-    dataloader = DataLoader(dataset, batch_size=2, shuffle=False)
+    dataloader = DataLoader(dataset, batch_size=2, shuffle=True)
 
     # try to iterate over the data loader
     for batch in dataloader:
@@ -44,10 +44,14 @@ def test_dataset_grid():
         print(batch.batch)
         print(batch.block_index)
         # print(batch.edge_imaginary_index)
+        print("edge_index :")
         print(batch.edge_index)
 
 
+        print("edge_imaginary_index : ")
+        print(batch.edge_imaginary_index)
 
+        print("edge_attr_imaginary :")
         print(batch.edge_attr_imaginary)
         print(batch.edge_attr_imaginary.sum())
 

@@ -52,10 +52,11 @@ class GRAN(nn.Module):
         # setup embedding for fake node
         self.fake_node = nn.Parameter(torch.randn(1, hidden_dim))
 
-        # time embedding / order embedding
+        # time embedding / order embedding with xavier_uniform
         self.node_embedding = nn.Parameter(
             torch.randn(nb_max_node, dim_order_embedding)
         )
+        nn.init.xavier_uniform_(self.node_embedding)
 
         # setup graph layers (GATv2Conv)
         self.gnn = nn.ModuleList()
@@ -106,7 +107,6 @@ class GRAN(nn.Module):
             graph.edge_imaginary_index,
         )
 
-
         # first node encoding
         nodes = graph.x
 
@@ -132,8 +132,10 @@ class GRAN(nn.Module):
         nodes = torch.cat([nodes, nodes_embedding], dim=1)
         nodes_features = self.encoder(nodes)
 
+        print("nodes shape", nodes_features.shape)
+
         # replace the nodes_features in block_index by the fake node
-        nodes_features[block_index] = self.fake_node
+        # nodes_features[block_index] = self.fake_node # no need as there is already information in the time embedding
 
         # now we can start the graph generation
         for i in range(self.nb_layer):
@@ -147,6 +149,7 @@ class GRAN(nn.Module):
             ],
             dim=1,
         )
+
         edges_prob = torch.sigmoid(
             self.decoding_layer_edge(input_edges)
         )  # probabilities

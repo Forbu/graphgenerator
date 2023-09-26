@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint_name",
         type=str,
-        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=07-val_loss=0.00.ckpt",
+        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=02-val_loss=0.38.ckpt",
         help="Checkpoint name",
     )
 
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     batch_size = 32
 
     print("Loading the validation dataset...")
-    validation_dataset = DatasetGrid(100, 10, 10, 2)
+    validation_dataset = DatasetGrid(100, 10, 10, 1)
 
     validation_dataloader = DataLoader(
         validation_dataset, batch_size=batch_size, shuffle=False
@@ -61,6 +61,8 @@ if __name__ == "__main__":
     print("Loss: ", loss)
 
     print("Edges prob: ", edges_prob)
+    print("Edges prob max :", edges_prob.max())
+    print("Edges prob min :", edges_prob.min())
 
     print("Edge attr imaginary: ", edge_attr_imaginary)
     print("Edge attr imaginary sum: ", edge_attr_imaginary.sum())

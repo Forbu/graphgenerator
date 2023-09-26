@@ -27,7 +27,7 @@ if __name__ == "__main__":
 
     # parser about the dataset type
     parser.add_argument(
-        "--dataset_type", type=str, default="erdos_renyi", help="Type of dataset to use"
+        "--dataset_type", type=str, default="grid", help="Type of dataset to use"
     )
 
     # parser about the dataset size
@@ -36,7 +36,7 @@ if __name__ == "__main__":
     )
 
     # batch size
-    parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
 
     # nb epoch training
     parser.add_argument(
@@ -54,18 +54,18 @@ if __name__ == "__main__":
     if args.dataset_type == "erdos_renyi":
         # basicly we load a training and a validation dataset
         print("Loading the dataset...")
-        training_dataset = DatasetErdos(args.nb_graphs, 100, 0.01, 2)
+        training_dataset = DatasetErdos(args.nb_graphs, 100, 0.01, 1)
 
         print("Loading the validation dataset...")
-        validation_dataset = DatasetErdos(100, 100, 0.01, 2)
+        validation_dataset = DatasetErdos(100, 100, 0.01, 1)
 
     elif args.dataset_type == "grid":
         # basicly we load a training and a validation dataset
         print("Loading the dataset...")
-        training_dataset = DatasetGrid(args.nb_graphs, 10, 10, 2)
+        training_dataset = DatasetGrid(args.nb_graphs, 10, 10, 1)
 
         print("Loading the validation dataset...")
-        validation_dataset = DatasetGrid(100, 10, 10, 2)
+        validation_dataset = DatasetGrid(100, 10, 10, 1)
 
     # we create the dataloader
     training_dataloader = DataLoader(

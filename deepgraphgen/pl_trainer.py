@@ -19,10 +19,10 @@ class TrainerGRAN(pl.LightningModule):
 
     def __init__(
         self,
-        nb_layer=3,
+        nb_layer=2,
         in_dim_node=1,
         out_dim_node=1,
-        hidden_dim=32,
+        hidden_dim=16,
         nb_max_node=100,
         dim_order_embedding=16,
     ):
@@ -50,7 +50,7 @@ class TrainerGRAN(pl.LightningModule):
         """
         Function used to compute the loss
         """
-        nodes_features, edges_prob = self.forward(graphs)
+        _, edges_prob = self.forward(graphs)
 
         # also retrieve the edge_attr_imaginary from the graph to compute the loss
         edge_attr_imaginary = graphs.edge_attr_imaginary
@@ -118,6 +118,4 @@ class TrainerGRAN(pl.LightningModule):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.Adam(
-            self.parameters(), lr=0.001
-        )  # trying something different later (Lion)
+        return torch.optim.Adam(self.parameters(), lr=0.0001)

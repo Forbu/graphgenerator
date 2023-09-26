@@ -7,10 +7,12 @@ import networkx as nx
 import torch
 from torch.utils.data import Dataset
 
-from torch_geometric.data import Data, DataLoader
+from torch_geometric.data import Data
+import torch_geometric.transforms as T
 
 from deepgraphgen.datageneration import generate_dataset
 
+undirected_transform = T.ToUndirected()
 
 def generate_data_graph(graph, nb_nodes, block_size):
     # now we create the block indexes (the last block_size nodes)
@@ -31,7 +33,6 @@ def generate_data_graph(graph, nb_nodes, block_size):
     edge_index_real = torch.tensor(edges, dtype=torch.long).t().contiguous()
     edge_index_real_reverse = edge_index_real[[1, 0]]
 
-
     # we want to add the reverse edges
     edge_index_real = torch.cat([edge_index_real, edge_index_real_reverse], dim=1)
 
@@ -43,14 +44,15 @@ def generate_data_graph(graph, nb_nodes, block_size):
     # the full index is the concatenation of the edge index and the imaginary edge index
     edge_index = torch.cat([edge_index_real, edge_imaginary_index], dim=1)
 
-    # drop duplicate edges
-    edge_index, _ = torch.unique(edge_index, sorted=True, return_inverse=True, dim=1)
 
     # we create the node features
     node_features = torch.zeros(nb_nodes, 1)
 
     # create the graph
     graph = Data(x=node_features, edge_index=edge_index)
+
+    # make the graph undirected
+    graph = undirected_transform(graph)
 
     # create 1 batch graph
     graph.block_index = block_index
@@ -86,6 +88,11 @@ def create_imaginary_edges_index(nb_nodes, block_size, edge_index_real):
             :, (edge_index_real[0] == nb_nodes - block_size + i)
         ]
         destination_list = edge_index_real_block[1].tolist()
+
+        # print("block name :", nb_nodes - block_size + i)
+        # print("destination list :", destination_list)
+        # print(edge_index_real_block)
+        # print(edge_index_real)
 
         # init the attribute edge
         edge_attr_imaginary = torch.zeros(nb_nodes, dtype=torch.float)
