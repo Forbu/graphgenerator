@@ -13,3 +13,8 @@ We will explore different architecture here :
 - Diffusion (adaptation to latent diffusion model)
 
 
+## Runnig experimentation
+
+```bash
+python train_erdos.py --dataset_type grid --batch_size 32
+```

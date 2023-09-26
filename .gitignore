@@ -4,3 +4,4 @@
 *.yaml
 *.ckpt
 *.ckpt
+logs/**
