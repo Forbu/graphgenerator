@@ -25,21 +25,54 @@ from deepgraphgen.graphGRAN import GRAN
 BATCH_SIZE = 4
 
 if __name__ == "__main__":
+
+    # retrieve arguments
+    parser = argparse.ArgumentParser()
+
+    parser.add_argument("--nb_layer", type=int, default=3, help="Number of GRAN layers")
+
+    # parser about the dataset type
+    parser.add_argument("--dataset_type", type=str, default="erdos_renyi", help="Type of dataset to use")
     
-    # basicly we load a training and a validation dataset
-    print("Loading the dataset...")
-    training_dataset = DatasetGrid(1000, 10, 10, 2)
+    # parser about the dataset size
+    parser.add_argument("--nb_graphs", type=int, default=1000, help="Number of graphs to generate")
+
+    # batch size
+    parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
+
+    # nb epoch training
+    parser.add_argument("--nb_epoch", type=int, default=10, help="Number of epoch to train")
+
+    # gpu or cpu (str)
+    parser.add_argument("--device", type=str, default="cpu", help="Device to use for training")
+
+    # retrieve the arguments
+    args = parser.parse_args()
+
+    if args.dataset_type == "erdos_renyi":
+
+        # basicly we load a training and a validation dataset
+        print("Loading the dataset...")
+        training_dataset = DatasetErdos(args.nb_graphs, 100, 0.01, 2)
+        
+        print("Loading the validation dataset...")
+        validation_dataset = DatasetErdos(100, 100, 0.01, 2)
     
-    print("Loading the validation dataset...")
-    validation_dataset = DatasetGrid(100, 10, 10, 2)
+    elif args.dataset_type == "grid":
+        # basicly we load a training and a validation dataset
+        print("Loading the dataset...")
+        training_dataset = DatasetGrid(args.nb_graphs, 10, 10, 2)
+        
+        print("Loading the validation dataset...")
+        validation_dataset = DatasetGrid(100, 10, 10, 2)
     
     # we create the dataloader
     training_dataloader = DataLoader(
-        training_dataset, batch_size=BATCH_SIZE, shuffle=True
+        training_dataset, batch_size=args.batch_size, shuffle=True
     )
     
     validation_dataloader = DataLoader(
-        validation_dataset, batch_size=BATCH_SIZE, shuffle=False
+        validation_dataset, batch_size=args.batch_size, shuffle=False
     )
     
     # we create the model
@@ -112,11 +145,11 @@ if __name__ == "__main__":
     model = TrainerGRAN()
             
     # we need a custom tensboard logger
-    logger = pl.loggers.TensorBoardLogger("logs/", name="erdos_renyi")
+    logger = pl.loggers.TensorBoardLogger("logs/", name=args.dataset_type)
     
     print("Training...")
     # we create the trainer
-    trainer = pl.Trainer(max_epochs=10, logger=logger, accelerator="cpu")
+    trainer = pl.Trainer(max_epochs=args.nb_epoch, logger=logger, accelerator=args.device)
     
     # we train the model
     trainer.fit(model, training_dataloader, validation_dataloader)
