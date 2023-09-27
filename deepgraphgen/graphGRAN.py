@@ -161,7 +161,7 @@ class GRAN(nn.Module):
             nodes_embedding_list.append(nodes_embedding)
 
         # concatenate the list
-        nodes_embedding = torch.cat(nodes_embedding_list, dim=0)
+        nodes_embedding = torch.cat(nodes_embedding_list, dim=0).to(nodes.device)
 
         # now we can concatenate the nodes features with the time embedding
         nodes = torch.cat([nodes, nodes_embedding], dim=1)
