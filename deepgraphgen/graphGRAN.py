@@ -144,6 +144,7 @@ class GRAN(nn.Module):
 
         # first node encoding
         nodes = graph.x
+        edge_index = graph.edge_index
 
         # if gpu is available we put the nodes on the gpu and all the other tensors
         if torch.cuda.is_available():

@@ -16,10 +16,13 @@ from networkx import (
     grid_graph,
     bfs_edges,
     relabel_nodes,
-    convert_node_labels_to_integers
+    convert_node_labels_to_integers,
 )
 
-def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None):
+
+def generated_graph(
+    graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None
+):
     """
     Functions used to generate different graphs
     """
@@ -33,10 +36,12 @@ def generated_graph(graph_name, n=None, p=None, k=None, m=None, p1=None, p2=None
         assert m != None, "define m"
         return barabasi_albert_graph(n, m)
     elif graph_name == "random_lobster":
+        assert p1 != None and p2 != None, "define p1 and p2"
         return random_lobster(n, p1, p2)
     elif graph_name == "grid_graph":
         assert nx != None and ny != None, "define nx and ny"
         return grid_graph(dim=[nx, ny])
+
 
 def bfs_order(graph):
     """
@@ -44,18 +49,29 @@ def bfs_order(graph):
     """
 
     graph = convert_node_labels_to_integers(graph)
-    
+
     list_edges_visited = list(bfs_edges(graph, 0))
-    
+
     nodes_ordering = [0] + [edge[1] for edge in list_edges_visited]
     mapping = {node: nodes_ordering.index(node) for node in nodes_ordering}
-    
+
     H = relabel_nodes(graph, mapping)
-    
+
     return H
 
+
 def generate_dataset(
-    graph_name, nb_graphs, n=None, p=None, k=None, m=None, p1=None, p2=None, nx=None, ny=None, bfs_order_activation=True
+    graph_name,
+    nb_graphs,
+    n=None,
+    p=None,
+    k=None,
+    m=None,
+    p1=None,
+    p2=None,
+    nx=None,
+    ny=None,
+    bfs_order_activation=True,
 ):
     """
     Function used to generate a dataset of graphs

@@ -190,7 +190,7 @@ class DatasetWattsStrogatz(Dataset):
         self.block_size = block_size
         self.n = n
 
-        self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n, k, p)
+        self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=n, k=k, p=p)
 
     def __len__(self):
         return self.nb_graphs * (self.n - self.block_size)
@@ -222,7 +222,7 @@ class DatasetBarabasiAlbert(Dataset):
         self.block_size = block_size
         self.n = n
 
-        self.list_graphs = generate_dataset("barabasi_albert_graph", nb_graphs, n, m)
+        self.list_graphs = generate_dataset("barabasi_albert_graph", nb_graphs, n=n, m=m)
 
     def __len__(self):
         return self.nb_graphs * (self.n - self.block_size)
@@ -255,7 +255,7 @@ class DatasetRandomLobster(Dataset):
         self.block_size = block_size
         self.n = n
 
-        self.list_graphs = generate_dataset("random_lobster", nb_graphs, n, p1, p2)
+        self.list_graphs = generate_dataset("random_lobster", nb_graphs, n=n, p1=p1, p2=p2)
 
     def __len__(self):
         return self.nb_graphs * (self.n - self.block_size)
