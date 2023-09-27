@@ -104,7 +104,7 @@ class TrainerGRAN(pl.LightningModule):
             "val_accuracy",
             self.train_accuracy(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
             .cpu()
-            .item(),
+            .item(), batch_size=batch.x.size(0),
         )
 
         # log precision between the predicted and the real edge
@@ -112,7 +112,7 @@ class TrainerGRAN(pl.LightningModule):
             "val_precision",
             self.train_precision(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
             .cpu()
-            .item(),
+            .item(), batch_size=batch.x.size(0),
         )
 
         return loss
@@ -124,10 +124,14 @@ class TrainerGRAN(pl.LightningModule):
         # we can plot the graph
         nx.draw(graph, with_labels=True)
 
-        # save the images (matplotlib) and log it
-        plt.savefig("graph.png")
+        # save the images (matplotlib) (overwrite) and log it
+        name_img = f"graph_{}_epoch.png".format(self.current_epoch)
+        plt.savefig(name_img)
 
-        img = plt.imread("graph.png")[:, :, :3]
+        # clear the plot
+        plt.clf()
+
+        img = plt.imread(name_img)[:, :, :3]
 
         # change format from HWC to CHW
         img = img.transpose((2, 0, 1))

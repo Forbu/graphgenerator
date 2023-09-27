@@ -77,7 +77,14 @@ if __name__ == "__main__":
     )
 
     print("Training on graphs")
-    model = TrainerGRAN()
+    model = TrainerGRAN(
+        nb_layer=args.nb_layer,
+        in_dim_node=1,
+        out_dim_node=1,
+        hidden_dim=32,
+        nb_max_node=100,
+        dim_order_embedding=16,
+    )
 
     # we need a custom tensboard logger
     logger = pl.loggers.TensorBoardLogger("logs/", name=args.dataset_type)

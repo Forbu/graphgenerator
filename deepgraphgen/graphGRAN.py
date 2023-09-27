@@ -225,7 +225,7 @@ class GRAN(nn.Module):
         self.eval()
 
         with torch.no_grad():
-            for i in range(self.nb_max_node - self.block_size):
+            for i in range(self.nb_max_node - self.block_size - 1):
                 graph_networkx, graph_torch = self.update_graph(
                     graph_torch, graph_networkx
                 )
