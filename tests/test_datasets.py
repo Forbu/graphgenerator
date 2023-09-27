@@ -11,7 +11,7 @@ from torch_geometric.loader import DataLoader
 from deepgraphgen.datasets_torch import DatasetErdos, DatasetGrid
 
 
-def xtest_dataset_erdos():
+def test_dataset_erdos():
     dataset = DatasetErdos(nb_graphs=10, n=100, p=0.01, block_size=10)
 
     print(dataset[0])
@@ -57,4 +57,3 @@ def test_dataset_grid():
 
         break
 
-    exit()

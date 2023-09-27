@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint_name",
         type=str,
-        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=02-val_loss=0.38.ckpt",
+        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=00-val_loss=0.04.ckpt",
         help="Checkpoint name",
     )
 
@@ -60,11 +60,11 @@ if __name__ == "__main__":
 
     print("Loss: ", loss)
 
-    print("Edges prob: ", edges_prob)
+    print("Edges prob: ", edges_prob.squeeze())
     print("Edges prob max :", edges_prob.max())
     print("Edges prob min :", edges_prob.min())
 
-    print("Edge attr imaginary: ", edge_attr_imaginary)
+    print("Edge attr imaginary: ", edge_attr_imaginary.squeeze())
     print("Edge attr imaginary sum: ", edge_attr_imaginary.sum())
 
     print(batch)

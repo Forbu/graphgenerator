@@ -6,6 +6,10 @@ The GRAN is an autoregressive model that generates a graph by adding one block o
 """
 import pytest
 
+import networkx as nx
+
+import matplotlib.pyplot as plt
+
 import torch
 from torch_geometric.data import Data
 
@@ -28,9 +32,7 @@ def input_graph():
 
     # create the block edge indexes
 
-    edge_imaginary_index = torch.tensor([[1, 2],
-                                     [2, 1]], dtype=torch.long)
-    
+    edge_imaginary_index = torch.tensor([[1, 2], [2, 1]], dtype=torch.long)
 
     graph = Data(x=node_features, edge_index=edge_index)
 
@@ -40,7 +42,6 @@ def input_graph():
     graph.block_index = block_index
 
     graph.edge_imaginary_index = edge_imaginary_index
-    
 
     return graph
 
@@ -61,3 +62,27 @@ def test_gran(input_graph):
 
     assert nodes_features.shape == (1, 3)
     assert edges_prob.shape == (2, 1)
+
+
+def test_sampling_graph():
+    """
+    Function to test the sampling of a graph with the model
+    """
+    # init the model
+    gran = GRAN(
+        nb_layer=2,
+        in_dim_node=1,
+        out_dim_node=3,
+        hidden_dim=4,
+        nb_max_node=10,
+        dim_order_embedding=5,
+    )
+
+    # sampling a graph
+    graph = gran.generate()
+
+    # plot the networkx graph
+    nx.draw(graph, with_labels=True)
+
+    # save the graph (matplotlib)
+    plt.savefig("tests/graph.png")

@@ -10,6 +10,9 @@ We have two graphs :
 """
 
 from typing import Optional
+
+import networkx as nx
+
 import torch
 from torch import nn
 import torch.functional as F
@@ -18,6 +21,7 @@ from torch.nn.parameter import Parameter
 from torch_geometric.nn import GATv2Conv
 
 from deepgraphgen.utils import MLP
+from deepgraphgen.datasets_torch import generate_data_graph
 
 
 class GRAN(nn.Module):
@@ -33,6 +37,7 @@ class GRAN(nn.Module):
         hidden_dim,
         nb_max_node,
         dim_order_embedding,
+        block_size=1,
     ):
         super().__init__()
 
@@ -42,6 +47,7 @@ class GRAN(nn.Module):
         self.hidden_dim = hidden_dim
         self.nb_max_node = nb_max_node
         self.dim_order_embedding = dim_order_embedding
+        self.block_size = block_size
 
         # setup encoder for real node
         self.encoder = MLP(
@@ -108,7 +114,6 @@ class GRAN(nn.Module):
             for param in self.gnn[i].parameters():
                 if len(param.shape) >= 2:
                     nn.init.xavier_uniform_(param)
-
 
     def forward(
         self,
@@ -193,5 +198,73 @@ class GRAN(nn.Module):
     ):
         """
         Generate a graph from (optional) seed node
+        we start the model from a simple node and we generate the graph up to the maximum number of nodes
         """
-        pass
+        # init the graph with one node (in networkx format so we can use the generate_data_graph format
+        graph_networkx = nx.Graph()
+
+        # add the first node and the other block nodes
+        graph_networkx.add_node(0)  # node 0
+
+        # we add the block nodes
+        for i in range(1, self.block_size + 1):
+            graph_networkx.add_node(i)
+
+        # add one edges between the first node and the block nodes
+        for i in range(1, self.block_size + 1):
+            graph_networkx.add_edge(0, i)
+
+        # now we can use the generate_data_graph function
+        graph_torch = generate_data_graph(
+            graph_networkx, 1 + self.block_size, self.block_size
+        )
+
+        # add batch index
+        graph_torch.batch = torch.zeros(graph_torch.num_nodes, dtype=torch.long)
+
+        self.eval()
+
+        with torch.no_grad():
+            for i in range(self.nb_max_node - self.block_size):
+                graph_networkx, graph_torch = self.update_graph(
+                    graph_torch, graph_networkx
+                )
+
+        return graph_networkx
+
+    def update_graph(self, graph_torch, graph_networkx):
+        """
+        Update the graph with the new block of nodes
+        """
+        # now we can apply the model to the graph
+        _, edges_prob = self(graph_torch)
+
+        # we can sample the edges
+        edges_prob = edges_prob.squeeze()
+
+        # we sample the edges
+        edges_sampling_value = torch.bernoulli(edges_prob)
+
+        # we can add the edges to the graph if the value is 1
+        for i in range(edges_sampling_value.shape[0]):
+            if edges_sampling_value[i] == 1:
+
+                graph_networkx.add_edge(
+                    graph_torch.edge_imaginary_index[0][i].item(),
+                    graph_torch.edge_imaginary_index[1][i].item(),
+                )
+
+        # we add the block nodes
+        for i in range(1, self.block_size + 1):
+
+            graph_networkx.add_node(graph_networkx.number_of_nodes())
+
+        # now we can use the generate_data_graph function
+        graph_torch = generate_data_graph(
+            graph_networkx, graph_networkx.number_of_nodes(), self.block_size
+        )
+
+        # add batch index
+        graph_torch.batch = torch.zeros(graph_torch.num_nodes, dtype=torch.long)
+
+        return graph_networkx, graph_torch

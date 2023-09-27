@@ -32,7 +32,7 @@ if __name__ == "__main__":
 
     # parser about the dataset size
     parser.add_argument(
-        "--nb_graphs", type=int, default=1000, help="Number of graphs to generate"
+        "--nb_graphs", type=int, default=2000, help="Number of graphs to generate"
     )
 
     # batch size

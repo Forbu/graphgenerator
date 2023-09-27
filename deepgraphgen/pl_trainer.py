@@ -1,7 +1,8 @@
 """
 Helper class to train the model (with pytorch lightning)
 """
-
+import networkx as nx
+import matplotlib.pyplot as plt
 
 from deepgraphgen.graphGRAN import GRAN
 
@@ -113,6 +114,20 @@ class TrainerGRAN(pl.LightningModule):
         )
 
         return loss
+
+    def on_validation_epoch_end(self):
+        # here we want to sample a graph with the generate() function
+        graph = self.model.generate()
+
+        # we can plot the graph
+        nx.draw(graph, with_labels=True)
+
+        # save the images (matplotlib) and log it
+        plt.savefig("graph.png")
+
+        self.logger.experiment.add_image(
+            "generated_graph", plt.imread("graph.png"), self.current_epoch
+        )
 
     def configure_optimizers(self):
         """
