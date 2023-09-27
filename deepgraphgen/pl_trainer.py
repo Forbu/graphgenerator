@@ -97,7 +97,7 @@ class TrainerGRAN(pl.LightningModule):
         loss, edges_prob, edge_attr_imaginary = self.compute_loss(batch)
 
         # log the loss
-        self.log("val_loss", loss)
+        self.log("val_loss", loss, batch_size=batch.x.size(0))
 
         # log accuracy between the predicted and the real edge
         self.log(
