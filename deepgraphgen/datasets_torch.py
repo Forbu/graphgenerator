@@ -176,3 +176,101 @@ class DatasetGrid(Dataset):
             return self.__getitem__((idx + 1) % self.__len__())
         else:
             return resulting_graph
+
+
+class DatasetWattsStrogatz(Dataset):
+    """
+    Dataset class for grid_graph graphs
+    """
+
+    def __init__(self, nb_graphs, n, k, p, block_size):
+        self.nb_graphs = nb_graphs
+        self.k = k
+        self.p = p
+        self.block_size = block_size
+        self.n = n
+
+        self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n, k, p)
+
+    def __len__(self):
+        return self.nb_graphs * (self.n - self.block_size)
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph_idx = idx // (self.n - self.block_size)
+        nb_nodes = (idx % (self.n - self.block_size)) + self.block_size
+
+        graph = self.list_graphs[graph_idx]
+
+        resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
+
+        if resulting_graph is None:
+            #print("None graph")
+            return self.__getitem__((idx + 1) % self.__len__())
+        else:
+            return resulting_graph
+        
+
+class DatasetBarabasiAlbert(Dataset):
+    """
+    Dataset class for barabasi_albert_graph graphs
+    """
+
+    def __init__(self, nb_graphs, n, m, block_size):
+        self.nb_graphs = nb_graphs
+        self.m = m
+        self.block_size = block_size
+        self.n = n
+
+        self.list_graphs = generate_dataset("barabasi_albert_graph", nb_graphs, n, m)
+
+    def __len__(self):
+        return self.nb_graphs * (self.n - self.block_size)
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph_idx = idx // (self.n - self.block_size)
+        nb_nodes = (idx % (self.n - self.block_size)) + self.block_size
+
+        graph = self.list_graphs[graph_idx]
+
+        resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
+
+        if resulting_graph is None:
+            #print("None graph")
+            return self.__getitem__((idx + 1) % self.__len__())
+        else:
+            return resulting_graph
+        
+
+class DatasetRandomLobster(Dataset):
+    """
+    Dataset class for random_lobster graphs
+    """
+
+    def __init__(self, nb_graphs, n, p1, p2, block_size):
+        self.nb_graphs = nb_graphs
+        self.p1 = p1
+        self.p2 = p2
+        self.block_size = block_size
+        self.n = n
+
+        self.list_graphs = generate_dataset("random_lobster", nb_graphs, n, p1, p2)
+
+    def __len__(self):
+        return self.nb_graphs * (self.n - self.block_size)
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph_idx = idx // (self.n - self.block_size)
+        nb_nodes = (idx % (self.n - self.block_size)) + self.block_size
+
+        graph = self.list_graphs[graph_idx]
+
+        resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
+
+        if resulting_graph is None:
+            #print("None graph")
+            return self.__getitem__((idx + 1) % self.__len__())
+        else:
+            return resulting_graph

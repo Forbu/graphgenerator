@@ -26,7 +26,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--checkpoint_name",
         type=str,
-        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=00-val_loss=0.04.ckpt",
+        default="/workspaces/graphgenerator/scripts_training/checkpoints/model-epoch=09-val_loss=0.00.ckpt",
         help="Checkpoint name",
     )
 
@@ -68,5 +68,19 @@ if __name__ == "__main__":
     print("Edge attr imaginary sum: ", edge_attr_imaginary.sum())
 
     print(batch)
+
+    # graph generation
+    print("Generating a graph...")
+
+    graph = model.model.generate()
+
+    print(graph)
+
+    import networkx as nx
+    import matplotlib.pyplot as plt
+
+    nx.draw(graph, with_labels=True)
+
+    plt.savefig("graph.png")
 
     print("End of the test !")

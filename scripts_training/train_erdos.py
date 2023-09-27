@@ -15,7 +15,13 @@ from torch_geometric.loader import DataLoader
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from deepgraphgen.datasets_torch import DatasetErdos, DatasetGrid
+from deepgraphgen.datasets_torch import (
+    DatasetErdos,
+    DatasetGrid,
+    DatasetWattsStrogatz,
+    DatasetBarabasiAlbert,
+    DatasetRandomLobster,
+)
 from deepgraphgen.pl_trainer import TrainerGRAN
 
 
@@ -24,6 +30,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
 
     parser.add_argument("--nb_layer", type=int, default=3, help="Number of GRAN layers")
+
+    # hidden_dim (int)
+    parser.add_argument(
+        "--hidden_dim", type=int, default=32, help="Hidden dimension of the model"
+    )
 
     # parser about the dataset type
     parser.add_argument(
@@ -67,6 +78,30 @@ if __name__ == "__main__":
         print("Loading the validation dataset...")
         validation_dataset = DatasetGrid(100, 10, 10, 1)
 
+    elif args.dataset_type == "watts_strogatz_graph":
+        # basicly we load a training and a validation dataset
+        print("Loading the dataset...")
+        training_dataset = DatasetWattsStrogatz(args.nb_graphs, 100, 2, 0.1, 1)
+
+        print("Loading the validation dataset...")
+        validation_dataset = DatasetWattsStrogatz(100, 100, 2, 0.1, 1)
+
+    elif args.dataset_type == "barabasi_albert_graph":
+        # basicly we load a training and a validation dataset
+        print("Loading the dataset...")
+        training_dataset = DatasetBarabasiAlbert(args.nb_graphs, 100, 5, 1)
+
+        print("Loading the validation dataset...")
+        validation_dataset = DatasetBarabasiAlbert(100, 100, 5, 1)
+
+    elif args.dataset_type == "random_lobster":
+        # basicly we load a training and a validation dataset
+        print("Loading the dataset...")
+        training_dataset = DatasetRandomLobster(args.nb_graphs, 100, 0.05, 0.05, 1)
+
+        print("Loading the validation dataset...")
+        validation_dataset = DatasetRandomLobster(100, 100, 0.05, 0.05, 1)
+
     # we create the dataloader
     training_dataloader = DataLoader(
         training_dataset, batch_size=args.batch_size, shuffle=True
@@ -81,7 +116,7 @@ if __name__ == "__main__":
         nb_layer=args.nb_layer,
         in_dim_node=1,
         out_dim_node=1,
-        hidden_dim=32,
+        hidden_dim=args.hidden_dim,
         nb_max_node=100,
         dim_order_embedding=16,
     )
@@ -94,7 +129,7 @@ if __name__ == "__main__":
         monitor="val_loss",
         dirpath="checkpoints/",
         filename="model-{epoch:02d}-{val_loss:.2f}",
-        save_top_k=3,
+        save_top_k=2,
         mode="min",
     )
 

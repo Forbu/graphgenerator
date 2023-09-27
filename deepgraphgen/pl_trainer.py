@@ -125,7 +125,7 @@ class TrainerGRAN(pl.LightningModule):
         nx.draw(graph, with_labels=True)
 
         # save the images (matplotlib) (overwrite) and log it
-        name_img = f"graph_{}_epoch.png".format(self.current_epoch)
+        name_img = "graph_{}_epoch.png".format(self.current_epoch)
         plt.savefig(name_img)
 
         # clear the plot
