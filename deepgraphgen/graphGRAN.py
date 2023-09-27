@@ -145,6 +145,12 @@ class GRAN(nn.Module):
         # first node encoding
         nodes = graph.x
 
+        # if gpu is available we put the nodes on the gpu and all the other tensors
+        if torch.cuda.is_available():
+            nodes = nodes.cuda()
+            block_index = block_index.cuda()
+            edge_imaginary_index = edge_imaginary_index.cuda()
+
         # now we can concat the nodes features with the time embedding
         # for each graph we compute the number of nodes
         nodes_embedding_list = []
