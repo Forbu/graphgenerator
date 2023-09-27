@@ -172,7 +172,7 @@ class DatasetGrid(Dataset):
         resulting_graph = generate_data_graph(graph, nb_nodes, self.block_size)
 
         if resulting_graph is None:
-            print("None")
+            #print("None graph")
             return self.__getitem__((idx + 1) % self.__len__())
         else:
             return resulting_graph

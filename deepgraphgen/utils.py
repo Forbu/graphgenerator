@@ -19,7 +19,7 @@ class MLP(nn.Module):
         out_dim=128,
         hidden_dim=128,
         hidden_layers=2,
-        norm_type="LayerNorm",
+        norm_type=None,
     ):
         """
         MLP
@@ -43,7 +43,7 @@ class MLP(nn.Module):
                 "LayerNorm",
                 "GraphNorm",
                 "InstanceNorm",
-                "BatchNorm",
+                "BatchNorm1d",
                 "MessageNorm",
             ]
             norm_layer = getattr(nn, norm_type)

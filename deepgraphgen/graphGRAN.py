@@ -9,9 +9,11 @@ We have two graphs :
 
 """
 
+from typing import Optional
 import torch
 from torch import nn
 import torch.functional as F
+from torch.nn.parameter import Parameter
 
 from torch_geometric.nn import GATv2Conv
 
@@ -80,6 +82,34 @@ class GRAN(nn.Module):
             hidden_layers=2,
         )
 
+        # now we want to reset all the parameters of the model
+        self.reset_parameters()
+
+    def reset_parameters(self):
+        """
+        Reset all the parameters of the model
+        """
+        # reset the parameters of the encoder
+        for param in self.encoder.parameters():
+            if len(param.shape) >= 2:
+                nn.init.xavier_uniform_(param)
+
+        # reset the parameters of the decoder
+        for param in self.decoding_layer_edge.parameters():
+            if len(param.shape) >= 2:
+                nn.init.xavier_uniform_(param)
+
+        for param in self.decoding_layer_node.parameters():
+            if len(param.shape) >= 2:
+                nn.init.xavier_uniform_(param)
+
+        # reset the parameters of the gnn
+        for i in range(self.nb_layer):
+            for param in self.gnn[i].parameters():
+                if len(param.shape) >= 2:
+                    nn.init.xavier_uniform_(param)
+
+
     def forward(
         self,
         graph,
@@ -130,9 +160,8 @@ class GRAN(nn.Module):
 
         # now we can concatenate the nodes features with the time embedding
         nodes = torch.cat([nodes, nodes_embedding], dim=1)
-        nodes_features = self.encoder(nodes)
 
-        print("nodes shape", nodes_features.shape)
+        nodes_features = self.encoder(nodes)
 
         # replace the nodes_features in block_index by the fake node
         # nodes_features[block_index] = self.fake_node # no need as there is already information in the time embedding
