@@ -150,6 +150,7 @@ class GRAN(nn.Module):
             nodes = nodes.cuda()
             block_index = block_index.cuda()
             edge_imaginary_index = edge_imaginary_index.cuda()
+            edge_index = graph.edge_index.cuda()
 
         # now we can concat the nodes features with the time embedding
         # for each graph we compute the number of nodes
@@ -179,7 +180,7 @@ class GRAN(nn.Module):
 
         # now we can start the graph generation
         for i in range(self.nb_layer):
-            nodes_features = self.gnn[i](nodes_features, graph.edge_index)
+            nodes_features = self.gnn[i](nodes_features, edge_index)
 
         # now we can decode the edges
         input_edges = torch.cat(
