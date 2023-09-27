@@ -26,6 +26,7 @@ class TrainerGRAN(pl.LightningModule):
         hidden_dim=16,
         nb_max_node=100,
         dim_order_embedding=16,
+        block_size=1,
     ):
         super().__init__()
         self.model = GRAN(
@@ -35,6 +36,7 @@ class TrainerGRAN(pl.LightningModule):
             hidden_dim=hidden_dim,
             nb_max_node=nb_max_node,
             dim_order_embedding=dim_order_embedding,
+            block_size=block_size,
         )
 
         # init the loss (binary cross entropy)
@@ -125,8 +127,13 @@ class TrainerGRAN(pl.LightningModule):
         # save the images (matplotlib) and log it
         plt.savefig("graph.png")
 
+        img = plt.imread("graph.png")[:, :, :3]
+
+        # change format from HWC to CHW
+        img = img.transpose((2, 0, 1))
+
         self.logger.experiment.add_image(
-            "generated_graph", plt.imread("graph.png"), self.current_epoch
+            "generated_graph", img, self.current_epoch
         )
 
     def configure_optimizers(self):

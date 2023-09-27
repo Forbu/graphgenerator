@@ -12,9 +12,12 @@ We will explore different architecture here :
 
 - Diffusion (adaptation to latent diffusion model)
 
+- GRAN (recurrent geeneration)
+
 
 ## Runnig experimentation
 
 ```bash
+cd scripts_training/
 python train_erdos.py --dataset_type grid --batch_size 32
 ```
