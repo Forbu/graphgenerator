@@ -47,6 +47,8 @@ def input_graph():
 
 
 def test_gran(input_graph):
+
+    nb_k = 20
     # init the model
     gran = GRAN(
         nb_layer=2,
@@ -55,13 +57,15 @@ def test_gran(input_graph):
         hidden_dim=4,
         nb_max_node=10,
         dim_order_embedding=5,
+        nb_k=nb_k
     )
 
     # forward pass
-    nodes_features, edges_prob = gran(input_graph)
+    nodes_features, edges_prob, global_pooling_values = gran(input_graph)
 
     assert nodes_features.shape == (1, 3)
-    assert edges_prob.shape == (2, 1)
+    assert edges_prob.shape == (2, nb_k)
+    assert global_pooling_values.shape == (1, nb_k)
 
 
 def test_sampling_graph():

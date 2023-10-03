@@ -15,10 +15,11 @@ import networkx as nx
 
 import torch
 from torch import nn
-import torch.functional as F
+import torch.nn.functional as F
 from torch.nn.parameter import Parameter
 
 from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn.pool import global_mean_pool
 
 from deepgraphgen.utils import MLP
 from deepgraphgen.datasets_torch import generate_data_graph
@@ -38,6 +39,7 @@ class GRAN(nn.Module):
         nb_max_node,
         dim_order_embedding,
         block_size=1,
+        nb_k=20,
     ):
         super().__init__()
 
@@ -48,6 +50,7 @@ class GRAN(nn.Module):
         self.nb_max_node = nb_max_node
         self.dim_order_embedding = dim_order_embedding
         self.block_size = block_size
+        self.nb_k = nb_k
 
         # setup encoder for real node
         self.encoder = MLP(
@@ -79,11 +82,19 @@ class GRAN(nn.Module):
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
-            in_dim=hidden_dim * 2, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
+            in_dim=hidden_dim * 2, out_dim=nb_k, hidden_dim=hidden_dim, hidden_layers=2
         )
         self.decoding_layer_node = MLP(
             in_dim=hidden_dim,
             out_dim=out_dim_node,
+            hidden_dim=hidden_dim,
+            hidden_layers=2,
+        )
+
+        # decoding layer for global pooling
+        self.decoding_layer_global = MLP(
+            in_dim=hidden_dim,
+            out_dim=nb_k,
             hidden_dim=hidden_dim,
             hidden_layers=2,
         )
@@ -114,6 +125,14 @@ class GRAN(nn.Module):
             for param in self.gnn[i].parameters():
                 if len(param.shape) >= 2:
                     nn.init.xavier_uniform_(param)
+
+        # reset the parameters of the node embedding
+        nn.init.xavier_uniform_(self.node_embedding)
+
+        # reset for global pooling
+        for param in self.decoding_layer_global.parameters():
+            if len(param.shape) >= 2:
+                nn.init.xavier_uniform_(param)
 
     def forward(
         self,
@@ -183,6 +202,12 @@ class GRAN(nn.Module):
         for i in range(self.nb_layer):
             nodes_features = self.gnn[i](nodes_features, edge_index)
 
+        # now we can decode the global pooling
+        nodes_features_global_pooling = global_mean_pool(nodes_features, graph.batch)
+        nodes_features_global_pooling = self.decoding_layer_global(
+            nodes_features_global_pooling
+        )
+
         # now we can decode the edges
         input_edges = torch.cat(
             [
@@ -192,14 +217,12 @@ class GRAN(nn.Module):
             dim=1,
         )
 
-        edges_prob = torch.sigmoid(
-            self.decoding_layer_edge(input_edges)
-        )  # probabilities
+        edges_prob = self.decoding_layer_edge(input_edges)  # probabilities
 
         # now we can decode the nodes
         nodes_features = self.decoding_layer_node(nodes_features[block_index])
 
-        return nodes_features, edges_prob
+        return nodes_features, edges_prob, nodes_features_global_pooling
 
     def generate(
         self,
@@ -240,23 +263,37 @@ class GRAN(nn.Module):
 
         return graph_networkx
 
+    def sample_graph(self, edges_logit, global_proba_logit):
+        # first we sample among the global pooling nb_k values
+        global_proba = F.softmax(global_proba_logit, dim=-1)
+
+        # we sample the global pooling value
+        global_sampling_value = torch.multinomial(global_proba, num_samples=1)
+
+        # we retrieve the index of the global pooling value
+        global_sampling_index = global_sampling_value.item()
+
+        # we retrieve the edges probabilities
+        edges_logits_sampling = edges_logit[:, global_sampling_index]
+
+        # we sample the edges
+        edges_sampling_value = torch.bernoulli(torch.sigmoid(edges_logits_sampling))
+
+        return edges_sampling_value
+
     def update_graph(self, graph_torch, graph_networkx):
         """
         Update the graph with the new block of nodes
         """
         # now we can apply the model to the graph
-        _, edges_prob = self(graph_torch)
-
-        # we can sample the edges
-        edges_prob = edges_prob.squeeze()
+        _, edges_logit, global_proba_logit = self(graph_torch)
 
         # we sample the edges
-        edges_sampling_value = torch.bernoulli(edges_prob)
+        edges_sampling_value = self.sample_graph(edges_logit, global_proba_logit)
 
         # we can add the edges to the graph if the value is 1
         for i in range(edges_sampling_value.shape[0]):
             if edges_sampling_value[i] == 1:
-
                 graph_networkx.add_edge(
                     graph_torch.edge_imaginary_index[0][i].item(),
                     graph_torch.edge_imaginary_index[1][i].item(),
@@ -264,7 +301,6 @@ class GRAN(nn.Module):
 
         # we add the block nodes
         for i in range(1, self.block_size + 1):
-
             graph_networkx.add_node(graph_networkx.number_of_nodes())
 
         # now we can use the generate_data_graph function

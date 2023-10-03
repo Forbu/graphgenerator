@@ -12,7 +12,7 @@ We will explore different architecture here :
 
 - Diffusion (adaptation to latent diffusion model)
 
-- GRAN (recurrent geeneration)
+- GRAN (recurrent generation)
 
 
 ## Runnig experimentation
