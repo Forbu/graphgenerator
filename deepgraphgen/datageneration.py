@@ -83,6 +83,6 @@ def generate_dataset(
 
     # reorder graph with BFS (starting from node 0)
     if bfs_order_activation:
-        list_graphs = [bfs_order(graph) for graph in list_graphs]
+        list_graphs = [bfs_order(graph) for graph in list_graphs if graph.number_of_nodes() > 1]
 
     return list_graphs
