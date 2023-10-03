@@ -80,6 +80,7 @@ def test_sampling_graph():
         hidden_dim=4,
         nb_max_node=10,
         dim_order_embedding=5,
+        nb_k=20
     )
 
     # sampling a graph

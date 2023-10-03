@@ -26,12 +26,6 @@ def mixture_bernoulli_loss(
       log_alpha: E X D, see comments above
       adj_loss_func: BCE loss with logits
       subgraph_idx: E X 1, see comments above
-      subgraph_idx_base: B+1, cumulative # of edges in the subgraphs associated with each batch
-      num_canonical_order: int, number of node orderings considered
-      sum_order_log_prob: boolean, if True sum the log prob of orderings instead of taking logsumexp
-        i.e. log p(G, pi_1) + log p(G, pi_2) instead of log [p(G, pi_1) + p(G, pi_2)]
-        This is equivalent to the original GRAN loss.
-      return_neg_log_prob: boolean, if True also return neg log prob
       reduction: string, type of reduction on batch dimension ("mean", "sum", "none")
 
     Returns:

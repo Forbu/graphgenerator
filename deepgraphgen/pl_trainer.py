@@ -5,6 +5,7 @@ import networkx as nx
 import matplotlib.pyplot as plt
 
 from deepgraphgen.graphGRAN import GRAN
+from deepgraphgen.utils import mixture_bernoulli_loss
 
 import torch
 import lightning.pytorch as pl
@@ -27,6 +28,7 @@ class TrainerGRAN(pl.LightningModule):
         nb_max_node=100,
         dim_order_embedding=16,
         block_size=1,
+        nb_k=20,
     ):
         super().__init__()
         self.model = GRAN(
@@ -37,10 +39,11 @@ class TrainerGRAN(pl.LightningModule):
             nb_max_node=nb_max_node,
             dim_order_embedding=dim_order_embedding,
             block_size=block_size,
+            nb_k=nb_k,
         )
 
-        # init the loss (binary cross entropy)
-        self.loss = torch.nn.BCELoss()
+        # init the loss (binary cross entropy with logits)
+        self.loss = torch.nn.BCEWithLogitsLoss()
 
         # init accuracy metric
         self.train_accuracy = torchmetrics.Accuracy(task="binary")
@@ -53,15 +56,26 @@ class TrainerGRAN(pl.LightningModule):
         """
         Function used to compute the loss
         """
-        _, edges_prob = self.forward(graphs)
+        _, edges_logit, global_pooling_logit = self.forward(graphs)
+
+        global_pooling_logit_edges_form = torch.index_select(
+            global_pooling_logit, 0, graphs.batch
+        )
 
         # also retrieve the edge_attr_imaginary from the graph to compute the loss
         edge_attr_imaginary = graphs.edge_attr_imaginary
 
-        # compute the loss
-        loss = self.loss(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
+        # compute the loss # TODO
+        loss = mixture_bernoulli_loss(
+            edge_attr_imaginary,
+            edges_logit,
+            global_pooling_logit_edges_form,
+            self.loss,
+            graphs.batch,
+        )
+        # self.loss(edges_logit.squeeze(), edge_attr_imaginary.squeeze())
 
-        return loss, edges_prob, edge_attr_imaginary
+        return loss, edges_logit, edge_attr_imaginary
 
     def training_step(self, batch, batch_idx):
         """
@@ -71,22 +85,6 @@ class TrainerGRAN(pl.LightningModule):
 
         # log the loss
         self.log("train_loss", loss)
-
-        # log accuracy between the predicted and the real edge
-        self.log(
-            "train_accuracy",
-            self.train_accuracy(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
-            .cpu()
-            .item(),
-        )
-
-        # log precision between the predicted and the real edge
-        self.log(
-            "train_precision",
-            self.train_precision(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
-            .cpu()
-            .item(),
-        )
 
         return loss
 
@@ -98,22 +96,6 @@ class TrainerGRAN(pl.LightningModule):
 
         # log the loss
         self.log("val_loss", loss, batch_size=batch.x.size(0))
-
-        # log accuracy between the predicted and the real edge
-        self.log(
-            "val_accuracy",
-            self.train_accuracy(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
-            .cpu()
-            .item(), batch_size=batch.x.size(0),
-        )
-
-        # log precision between the predicted and the real edge
-        self.log(
-            "val_precision",
-            self.train_precision(edges_prob.squeeze(), edge_attr_imaginary.squeeze())
-            .cpu()
-            .item(), batch_size=batch.x.size(0),
-        )
 
         return loss
 
@@ -136,9 +118,7 @@ class TrainerGRAN(pl.LightningModule):
         # change format from HWC to CHW
         img = img.transpose((2, 0, 1))
 
-        self.logger.experiment.add_image(
-            "generated_graph", img, self.current_epoch
-        )
+        self.logger.experiment.add_image("generated_graph", img, self.current_epoch)
 
     def configure_optimizers(self):
         """

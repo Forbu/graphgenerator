@@ -137,6 +137,7 @@ class GRAN(nn.Module):
     def forward(
         self,
         graph,
+        return_batch_graph=False,
     ):
         """
         Forward pass, with the new nodes block indexes
@@ -222,7 +223,15 @@ class GRAN(nn.Module):
         # now we can decode the nodes
         nodes_features = self.decoding_layer_node(nodes_features[block_index])
 
-        return nodes_features, edges_prob, nodes_features_global_pooling
+        if return_batch_graph:
+            return (
+                nodes_features,
+                edges_prob,
+                nodes_features_global_pooling,
+                graph.batch[edge_imaginary_index[0]],
+            )
+        else:
+            return nodes_features, edges_prob, nodes_features_global_pooling
 
     def generate(
         self,
