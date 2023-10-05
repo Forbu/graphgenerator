@@ -35,7 +35,6 @@ def mixture_bernoulli_loss(
     num_subgraph = subgraph_idx.max() + 1
     E = theta_logits.shape[0]
     K = theta_logits.shape[1]
-    assert E % C == 0
 
     adj_loss = torch.stack(
         [adj_loss_func(theta_logits[:, kk], label) for kk in range(K)], dim=1

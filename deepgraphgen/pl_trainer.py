@@ -43,7 +43,7 @@ class TrainerGRAN(pl.LightningModule):
         )
 
         # init the loss (binary cross entropy with logits)
-        self.loss = torch.nn.BCEWithLogitsLoss()
+        self.loss = torch.nn.BCEWithLogitsLoss(reduction="none")
 
         # init accuracy metric
         self.train_accuracy = torchmetrics.Accuracy(task="binary")
@@ -65,13 +65,13 @@ class TrainerGRAN(pl.LightningModule):
         # also retrieve the edge_attr_imaginary from the graph to compute the loss
         edge_attr_imaginary = graphs.edge_attr_imaginary
 
-        # compute the loss # TODO
+        # compute the loss
         loss = mixture_bernoulli_loss(
             edge_attr_imaginary,
             edges_logit,
             global_pooling_logit_edges_form,
             self.loss,
-            graphs.batch,
+            graphs.batch.unsqueeze(1),
         )
         # self.loss(edges_logit.squeeze(), edge_attr_imaginary.squeeze())
 
