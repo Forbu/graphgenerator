@@ -76,7 +76,7 @@ if __name__ == "__main__":
         nb_graphs=1,
         n=100,
         k=2,
-        p=0.01,
+        p=0.1,
     )
 
     # plot the graph
