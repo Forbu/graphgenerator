@@ -12,10 +12,13 @@ TODO later
 - GraphGAN (GAN adaptation to graph)
 
 - Diffusion (adaptation to latent diffusion model)
+
 DiGress paper : https://arxiv.org/pdf/2209.14734.pdf (later)
+
 GraphGDP paper : https://arxiv.org/pdf/2212.01842.pdf (currently coding)
 
 - GRAN (recurrent generation) (implementation is done here)
+
 Paper : https://arxiv.org/abs/1910.00760
 
 ## Runnig experimentation
