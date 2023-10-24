@@ -36,7 +36,7 @@ def compute_mean_value_noise(t_array, whole_beta_values, index_t):
     return mean, variance
 
 
-def compute_mean_value_whole_noise(t_array, whole_beta_values, A0):
+def compute_mean_value_whole_noise(t_array, whole_beta_values):
     """
     Make the computation of the mean value for all the time step
     """
@@ -49,6 +49,32 @@ def compute_mean_value_whole_noise(t_array, whole_beta_values, A0):
         variance_values.append(variance)
 
     return mean_values, variance_values
+
+
+def add_noise_to_graph(graph, mean_beta, variance):
+    """
+    Function used to add noise to a graph
+
+    Args:
+        graph (torch.tensor): adjacency matrix of the graph
+        mean_beta (float): mean value of the noise
+        variance (float): variance value of the noise
+
+    Returns:
+        graph_noisy (torch.tensor): adjacency matrix of the noisy graph
+    """
+    # we generate the noise matrix
+    mean_beta = graph * mean_beta
+    noise_matrix = np.random.normal(mean_beta, np.sqrt(variance), size=(1))
+
+    # we add the noise matrix to the adjacency matrix
+    graph_noisy = noise_matrix
+
+    # now we can compute the gradiant of log p0t(At|A0)
+    # we have : d/dA0 log p0t(At|A0) = - (At - mean_beta) / variance
+    gradiant = -(graph - mean_beta) / variance
+
+    return graph_noisy, gradiant
 
 
 def batch_graph(
@@ -70,11 +96,11 @@ def batch_graph(
         list_graph (list): list of graph generated (noise added)
         gradiant (list): list of gradiant for each graph (diffusion process)
         array_t (np.array): array of time step for the diffusion process
-        
+
     """
     list_graph = generate_dataset(
         graph_name="erdos_renyi_graph",
-        n=10,
+        n=100,
         p=0.5,
         nb_graph=batch_size,
         bfs_order_activation=False,
@@ -93,4 +119,23 @@ def batch_graph(
     # we choose a random index of t for each graph
     list_index_t = np.random.randint(0, nb_timesteps, size=batch_size)
 
-    # then we generate all the beta values
+    # now we select the mean and variance values corresponding to the index t
+    list_mean_values = [list_mean_values[index] for index in list_index_t]
+    list_variance_values = [list_variance_values[index] for index in list_index_t]
+
+    # now we want to generate the noise matrix for each graph
+    list_graph_noisy = []
+    gradiant = []
+
+    for index_graph in range(batch_size):
+        graph_noisy, grad = add_noise_to_graph(
+            list_adjacency_matrix[index_graph],
+            list_mean_values[index_graph],
+            list_variance_values[index_graph],
+        )
+        list_graph_noisy.append(graph_noisy)
+        gradiant.append(grad)
+
+    t_array = [i / nb_timesteps for i in range(nb_timesteps)]
+
+    return list_graph_noisy, gradiant, t_array
