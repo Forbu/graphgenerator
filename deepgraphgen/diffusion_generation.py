@@ -13,7 +13,7 @@ def generate_beta_value(beta_min, beta_max, t_array):
     """
     Function used to generate the beta value for the diffusion process
 
-    β(t) = β¯min + t(β¯max − β¯min) for t ∈ [ 0, 1 ]
+    β(t) = β¯min + t(β¯max - β¯min) for t ∈ [ 0, 1 ]
 
     """
     return beta_min + t_array * (beta_max - beta_min)
@@ -65,16 +65,14 @@ def add_noise_to_graph(graph, mean_beta, variance):
     """
     # we generate the noise matrix
     mean_beta = graph * mean_beta
-    noise_matrix = np.random.normal(mean_beta, np.sqrt(variance), size=(1))
 
-    # we add the noise matrix to the adjacency matrix
-    graph_noisy = noise_matrix
+    noise_matrix = np.random.normal(mean_beta, np.sqrt(variance), size=mean_beta.shape)
 
     # now we can compute the gradiant of log p0t(At|A0)
     # we have : d/dA0 log p0t(At|A0) = - (At - mean_beta) / variance
     gradiant = -(graph - mean_beta) / variance
 
-    return graph_noisy, gradiant
+    return noise_matrix, gradiant
 
 
 def batch_graph(

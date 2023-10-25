@@ -10,6 +10,10 @@ from pytest import fixture
 
 import numpy as np
 
+import matplotlib.pyplot as plt
+
+import networkx as nx
+
 from deepgraphgen.diffusion_generation import (
     generate_beta_value,
     compute_mean_value_noise,
@@ -20,6 +24,7 @@ from deepgraphgen.diffusion_generation import (
 from deepgraphgen.datageneration import generated_graph
 
 NB_TIME_STEP = 1000
+
 
 @fixture
 def graph_grid():
@@ -59,9 +64,50 @@ def beta_values(t_array):
 
 def test_compute_mean_value_whole_noise(t_array, beta_values):
     """
-    Test the compute_mean_value_noise function
+    Test the compute_mean_value_whole_noise function
     """
     mean_values, variance_values = compute_mean_value_whole_noise(t_array, beta_values)
     assert len(mean_values) == NB_TIME_STEP
     assert len(variance_values) == NB_TIME_STEP
 
+
+def test_add_noise_to_graph(graph_grid, t_array, beta_values):
+    """
+    Test the add_noise_to_graph function
+    """
+    mean_values, variance_values = compute_mean_value_whole_noise(t_array, beta_values)
+
+    # convert graph_grid to adjacency matrix (networkx graph to numpy array)
+    grid_adjacency_matrix = nx.adjacency_matrix(graph_grid)
+    grid_adjacency_matrix = grid_adjacency_matrix.todense()
+
+    # resize the matrix to be between -1 and 1
+    grid_adjacency_matrix = 2 * grid_adjacency_matrix - 1
+
+    for index_t in range(len(t_array)):
+        graph_noisy, gradiant = add_noise_to_graph(
+            grid_adjacency_matrix, mean_values[index_t], variance_values[index_t]
+        )
+
+        # graph_noisy is a adjacency matrix we want to convert it to a graph (networkx)
+        # and then plot it
+        graph_noisy = np.array(graph_noisy)
+
+        # we only want to take the upper triangular part of the matrix
+        # and make it symmetric
+        graph_noisy = np.triu(graph_noisy)
+
+        # we add the transpose of the matrix to make it symmetric
+        graph_noisy = graph_noisy + graph_noisy.T
+
+        # the diagonal of the matrix is divided by 2
+        # because we have added it twice
+        np.fill_diagonal(graph_noisy, np.diagonal(graph_noisy) / 2)
+
+        # we plot the graph
+        plt.imshow(graph_noisy)
+
+        if index_t % 100 == 0:
+            print(f"index_t = {index_t}")
+            # save in a folder
+            plt.savefig(f"tests/figures/figure_{index_t}.png")
