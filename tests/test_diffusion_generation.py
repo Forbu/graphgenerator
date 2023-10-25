@@ -55,10 +55,10 @@ def beta_values(t_array):
     """
     Test the generate_beta_value function
     """
-    beta_values = generate_beta_value(0.1, 0.5, t_array)
+    beta_values = generate_beta_value(0.1, 5.0, t_array)
     assert beta_values.shape == (NB_TIME_STEP,)
     assert beta_values[0] == 0.1
-    assert beta_values[-1] == 0.5
+    assert beta_values[-1] == 5.0
     return beta_values
 
 
@@ -107,7 +107,13 @@ def test_add_noise_to_graph(graph_grid, t_array, beta_values):
         # we plot the graph
         plt.imshow(graph_noisy)
 
+        #
+        plt.colorbar()
+
         if index_t % 100 == 0:
             print(f"index_t = {index_t}")
             # save in a folder
             plt.savefig(f"tests/figures/figure_{index_t}.png")
+
+        # clear the figure
+        plt.clf()

@@ -50,7 +50,6 @@ def compute_mean_value_whole_noise(t_array, whole_beta_values):
 
     return mean_values, variance_values
 
-
 def add_noise_to_graph(graph, mean_beta, variance):
     """
     Function used to add noise to a graph
