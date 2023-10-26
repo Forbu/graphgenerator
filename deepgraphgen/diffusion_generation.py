@@ -69,7 +69,10 @@ def add_noise_to_graph(graph, mean_beta, variance):
 
     # now we can compute the gradiant of log p0t(At|A0)
     # we have : d/dA0 log p0t(At|A0) = - (At - mean_beta) / variance
-    gradiant = -(graph - mean_beta) / variance
+    if variance == 0:
+        gradiant = np.zeros(graph.shape)
+    else:
+        gradiant = -(graph - mean_beta) / variance
 
     return noise_matrix, gradiant
 
