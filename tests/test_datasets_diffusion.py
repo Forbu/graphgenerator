@@ -4,7 +4,7 @@ Test module to test the datasets_diffusion module.
 
 import pytest
 
-from torch.utils.data import DataLoader
+from torch_geometric.loader import DataLoader
 
 from deepgraphgen.datasets_diffusion import (
     DatasetGrid,

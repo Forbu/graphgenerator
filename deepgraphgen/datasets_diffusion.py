@@ -68,9 +68,37 @@ class DatasetGrid(Dataset):
         # convert the matrix to a torch tensor
         graph_noisy = torch.tensor(graph_noisy, dtype=torch.float)
 
+        # graph 1 :
+        adjacency_matrix_full = torch.ones_like(graph_noisy).to_sparse()
+
+        edge_index_full = adjacency_matrix_full.indices()
+        edge_attr_full = graph_noisy[edge_index_full[0], edge_index_full[1]]
+        edge_attr_gradiant = gradiant[edge_index_full[0], edge_index_full[1]]
+
+        data_full = Data(
+            x=torch.zeros(graph_noisy.shape[0]),
+            edge_index=edge_index_full,
+            edge_attr=edge_attr_full,
+            edge_attr_gradiant=edge_attr_gradiant,
+        )
+
+        # graph 2 :
+        adjacency_matrix_partial = graph_noisy >= 0
+        adjacency_matrix_partial = adjacency_matrix_partial.to_sparse()
+        edge_index_partial = adjacency_matrix_partial.indices()
+        edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
+
+        data_partial = Data(
+            x=torch.zeros(graph_noisy.shape[0]),
+            edge_index=edge_index_partial,
+            edge_attr=edge_attr_partial,
+        )
+
         return {
             "graph_noisy": graph_noisy,
-            "gradiant": gradiant,
+            "gradiant": torch.tensor(gradiant),
             "beta": self.beta_values[timestep],
             "timestep": self.t_array[timestep],
+            "data_full": data_full,
+            "data_partial": data_partial,
         }

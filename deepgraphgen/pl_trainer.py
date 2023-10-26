@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 from deepgraphgen.graphGRAN import GRAN
 from deepgraphgen.utils import mixture_bernoulli_loss
 
+from deepgraphgen.graphGDP import GraphGDP
+
 import torch
 import lightning.pytorch as pl
 
@@ -119,6 +121,67 @@ class TrainerGRAN(pl.LightningModule):
         img = img.transpose((2, 0, 1))
 
         self.logger.experiment.add_image("generated_graph", img, self.current_epoch)
+
+    def configure_optimizers(self):
+        """
+        Function used to configure the optimizer
+        """
+        return torch.optim.Adam(self.parameters(), lr=0.0001)
+
+
+# we create the model
+class TrainerGraphGDP(pl.LightningModule):
+    """
+    Warper class for training
+    """
+
+    def __init__(self, nb_layer=2, hidden_dim=16, nb_max_node=nb_max_node):
+        super().__init__()
+        self.model = GraphGDP(
+            nb_layer=nb_layer,
+            hidden_dim=hidden_dim,
+            nb_max_node=nb_max_node,
+        )
+
+        # init the loss (MSE)
+        self.loss = torch.nn.MSELoss(reduction="mean")
+
+        # init MSE metric
+        self.train_accuracy = torchmetrics.MeanSquaredError()
+
+    def forward(self, graphs):
+        return self.model(graphs)
+
+    def compute_loss(self, batch):
+        """
+        Function used to compute the loss
+        """
+
+
+    def training_step(self, batch, batch_idx):
+        """
+        Function used for the training step
+        """
+        loss = self.compute_loss(batch)
+
+        # log the loss
+        self.log("train_loss", loss)
+
+        return loss
+
+    def validation_step(self, batch, batch_idx):
+        """
+        Function used for the validation step
+        """
+        loss = self.compute_loss(batch)
+
+        # log the loss
+        self.log("val_loss", loss, batch_size=batch.x.size(0))
+
+        return loss
+
+    def on_validation_epoch_end(self):
+        pass
 
     def configure_optimizers(self):
         """
