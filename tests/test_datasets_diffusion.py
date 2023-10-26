@@ -28,4 +28,4 @@ def test_dataset_diffusion_grid():
 
     assert batch["graph_noisy"].shape == (batch_size, 100, 100)
     assert batch["gradiant"].shape == (batch_size, 100, 100)
-    assert batch["beta"].shape == (batch_size)
+    assert batch["beta"].shape == (batch_size,)
