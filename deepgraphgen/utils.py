@@ -2,9 +2,11 @@
 Different util tools for graph generation
 """
 
+from typing import Optional
 import torch
 from torch import nn
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 
 from torch_geometric.nn import GATv2Conv, global_mean_pool
 
@@ -117,6 +119,17 @@ class MLP(nn.Module):
             layers.append(norm_layer(out_dim))
 
         self.model = nn.Sequential(*layers)
+
+    def reset_parameters(self):
+        """
+        Reset the parameters of the model
+        with xaiver initialization
+        """
+        for layer in self.model:
+            if isinstance(layer, nn.Linear):
+                nn.init.xavier_uniform_(layer.weight)
+                nn.init.zeros_(layer.bias)
+        
 
     def forward(self, vector):
         """

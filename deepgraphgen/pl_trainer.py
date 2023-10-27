@@ -144,7 +144,7 @@ class TrainerGraphGDP(pl.LightningModule):
         )
 
         # init the loss (MSE)
-        self.loss = torch.nn.MSELoss(reduction="mean")
+        self.loss_fn = torch.nn.MSELoss(reduction="mean")
 
         # init MSE metric
         self.train_accuracy = torchmetrics.MeanSquaredError()
@@ -156,14 +156,17 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used to compute the loss
         """
-        graph_1 = batch["graph_1"]
-        graph_2 = batch["graph_2"]
-        t_value = batch["t_value"]
+        graph_1 = batch["data_full"]
+        graph_2 = batch["data_partial"]
+        t_value = batch["timestep"]
 
         output = self.forward(graph_1, graph_2, t_value)
 
         # now we compute the loss
-        loss = self.loss(output, graph_1.edge_attr[:, 1])
+        print(output.squeeze().shape)   
+        print(graph_1.edge_attr[:, 1].shape)
+
+        loss = self.loss_fn(output.squeeze(), graph_1.edge_attr[:, 1])
 
         return loss
 
