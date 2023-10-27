@@ -62,10 +62,10 @@ if __name__ == "__main__":
     if args.dataset_type == "grid":
         # basicly we load a training and a validation dataset
         print("Loading the dataset...")
-        training_dataset = DatasetGrid(args.nb_graphs, 10, 10, 1)
+        training_dataset = DatasetGrid(args.nb_graphs, 10, 10)
 
         print("Loading the validation dataset...")
-        validation_dataset = DatasetGrid(100, 10, 10, 1)
+        validation_dataset = DatasetGrid(100, 10, 10)
 
     # we create the dataloader
     training_dataloader = DataLoader(
@@ -87,7 +87,6 @@ if __name__ == "__main__":
         monitor="val_loss",
         dirpath="checkpoints/",
         filename="model-{epoch:02d}-{val_loss:.2f}",
-        save_top_k=2,
         mode="min",
     )
 
