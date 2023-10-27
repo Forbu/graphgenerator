@@ -163,10 +163,7 @@ class TrainerGraphGDP(pl.LightningModule):
         output = self.forward(graph_1, graph_2, t_value)
 
         # now we compute the loss
-        print(output.squeeze().shape)   
-        print(graph_1.edge_attr[:, 1].shape)
-
-        loss = self.loss_fn(output.squeeze(), graph_1.edge_attr[:, 1])
+        loss = self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
 
         return loss
 
@@ -189,7 +186,7 @@ class TrainerGraphGDP(pl.LightningModule):
         loss = self.compute_loss(batch)
 
         # log the loss
-        self.log("val_loss", loss, batch_size=batch.x.size(0))
+        self.log("val_loss", loss, batch_size=batch["data_full"].batch)
 
         return loss
 
