@@ -1,6 +1,5 @@
 """
-Module for training on the GRAN models
-with different datasets
+Module for training on the difussion models (graphGDP)
 """
 
 import os
@@ -16,14 +15,11 @@ from torch_geometric.loader import DataLoader
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from deepgraphgen.datasets_torch import (
-    DatasetErdos,
+from deepgraphgen.datasets_diffusion import (
     DatasetGrid,
-    DatasetWattsStrogatz,
-    DatasetBarabasiAlbert,
-    DatasetRandomLobster,
 )
-from deepgraphgen.pl_trainer import TrainerGRAN
+
+from deepgraphgen.pl_trainer import TrainerGraphGDP
 
 
 if __name__ == "__main__":
@@ -63,45 +59,13 @@ if __name__ == "__main__":
     # retrieve the arguments
     args = parser.parse_args()
 
-    if args.dataset_type == "erdos_renyi":
-        # basicly we load a training and a validation dataset
-        print("Loading the dataset...")
-        training_dataset = DatasetErdos(args.nb_graphs, 100, 0.01, 1)
-
-        print("Loading the validation dataset...")
-        validation_dataset = DatasetErdos(100, 100, 0.01, 1)
-
-    elif args.dataset_type == "grid":
+    if args.dataset_type == "grid":
         # basicly we load a training and a validation dataset
         print("Loading the dataset...")
         training_dataset = DatasetGrid(args.nb_graphs, 10, 10, 1)
 
         print("Loading the validation dataset...")
         validation_dataset = DatasetGrid(100, 10, 10, 1)
-
-    elif args.dataset_type == "watts_strogatz_graph":
-        # basicly we load a training and a validation dataset
-        print("Loading the dataset...")
-        training_dataset = DatasetWattsStrogatz(args.nb_graphs, 100, 2, 0.1, 1)
-
-        print("Loading the validation dataset...")
-        validation_dataset = DatasetWattsStrogatz(100, 100, 2, 0.1, 1)
-
-    elif args.dataset_type == "barabasi_albert_graph":
-        # basicly we load a training and a validation dataset
-        print("Loading the dataset...")
-        training_dataset = DatasetBarabasiAlbert(args.nb_graphs, 100, 5, 1)
-
-        print("Loading the validation dataset...")
-        validation_dataset = DatasetBarabasiAlbert(100, 100, 5, 1)
-
-    elif args.dataset_type == "random_lobster":
-        # basicly we load a training and a validation dataset
-        print("Loading the dataset...")
-        training_dataset = DatasetRandomLobster(args.nb_graphs, 100, 0.05, 0.05, 1)
-
-        print("Loading the validation dataset...")
-        validation_dataset = DatasetRandomLobster(100, 100, 0.05, 0.05, 1)
 
     # we create the dataloader
     training_dataloader = DataLoader(
@@ -113,17 +77,10 @@ if __name__ == "__main__":
     )
 
     print("Training on graphs")
-    model = TrainerGRAN(
-        nb_layer=args.nb_layer,
-        in_dim_node=1,
-        out_dim_node=1,
-        hidden_dim=args.hidden_dim,
-        nb_max_node=100,
-        dim_order_embedding=16,
-    )
+    model = TrainerGraphGDP(nb_layer=2, hidden_dim=16, nb_max_node=100)
 
     # we need a custom tensboard logger
-    logger = pl.loggers.TensorBoardLogger("logs/", name=args.dataset_type)
+    logger = pl.loggers.TensorBoardLogger("logs/", name="diffusion_" + args.dataset_type)
 
     # adding a checkpoint callback
     checkpoint_callback = pl.callbacks.ModelCheckpoint(

@@ -65,6 +65,7 @@ class GraphGDP(nn.Module):
         Reset the parameters of the model
         """
         self.encoder_edges.reset_parameters()
+        self.time_encoder.reset_parameters()
 
         for i in range(self.nb_layer):
             self.gnn_filter[i].reset_parameters()
@@ -87,6 +88,9 @@ class GraphGDP(nn.Module):
         nb_node_graph_1 = graph_1.x.shape[0]
         nb_node_graph_2 = graph_2.x.shape[0]
 
+        edge_attr_full = graph_1.edge_attr[:, 0].unsqueeze(1)
+        edge_attr_partial = graph_2.edge_attr
+
         # compute the subgraph_idx (batch_idx) for each graph
         subgraph_idx = graph_1.batch
 
@@ -100,8 +104,8 @@ class GraphGDP(nn.Module):
         graph_2.x = torch.concat((t_encoding, t_encoding), dim=1)
 
         # edge encoding
-        edge_encoding_graph_1 = self.encoder_edges(graph_1.edge_attr)
-        edge_encoding_graph_2 = self.encoder_edges(graph_2.edge_attr)
+        edge_encoding_graph_1 = self.encoder_edges(edge_attr_full)
+        edge_encoding_graph_2 = self.encoder_edges(edge_attr_partial)
 
         # compute the global representation of the graph
         for i in range(self.nb_layer):

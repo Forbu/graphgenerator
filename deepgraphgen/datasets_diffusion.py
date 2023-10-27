@@ -25,7 +25,7 @@ class DatasetGrid(Dataset):
     Dataset class for grid_graph graphs
     """
 
-    def __init__(self, nb_graphs, nx, ny, nb_timestep):
+    def __init__(self, nb_graphs, nx, ny, nb_timestep=1000):
         self.nb_graphs = nb_graphs
         self.nx = nx
         self.ny = ny
@@ -78,8 +78,9 @@ class DatasetGrid(Dataset):
         data_full = Data(
             x=torch.zeros(graph_noisy.shape[0]),
             edge_index=edge_index_full,
-            edge_attr=edge_attr_full,
-            edge_attr_gradiant=edge_attr_gradiant,
+            edge_attr=torch.stack(
+                [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant)], dim=1
+            ),
         )
 
         # graph 2 :

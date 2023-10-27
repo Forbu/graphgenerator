@@ -135,7 +135,7 @@ class TrainerGraphGDP(pl.LightningModule):
     Warper class for training
     """
 
-    def __init__(self, nb_layer=2, hidden_dim=16, nb_max_node=nb_max_node):
+    def __init__(self, nb_layer=2, hidden_dim=16, nb_max_node=100):
         super().__init__()
         self.model = GraphGDP(
             nb_layer=nb_layer,
@@ -149,13 +149,23 @@ class TrainerGraphGDP(pl.LightningModule):
         # init MSE metric
         self.train_accuracy = torchmetrics.MeanSquaredError()
 
-    def forward(self, graphs):
-        return self.model(graphs)
+    def forward(self, graph_1, graph_2, t_value):
+        return self.model(graph_1, graph_2, t_value)
 
     def compute_loss(self, batch):
         """
         Function used to compute the loss
         """
+        graph_1 = batch["graph_1"]
+        graph_2 = batch["graph_2"]
+        t_value = batch["t_value"]
+
+        output = self.forward(graph_1, graph_2, t_value)
+
+        # now we compute the loss
+        loss = self.loss(output, graph_1.edge_attr[:, 1])
+
+        return loss
 
 
     def training_step(self, batch, batch_idx):
