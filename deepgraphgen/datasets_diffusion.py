@@ -19,6 +19,41 @@ from deepgraphgen.diffusion_generation import (
 
 undirected_transform = T.ToUndirected()
 
+MAX_BETA = 5.0
+MIN_BETA = 0.1
+
+def create_full_graph(graph_noisy, gradiant):
+    adjacency_matrix_full = torch.ones_like(graph_noisy).to_sparse()
+
+    edge_index_full = adjacency_matrix_full.indices()
+    edge_attr_full = graph_noisy[edge_index_full[0], edge_index_full[1]]
+    edge_attr_gradiant = gradiant[edge_index_full[0], edge_index_full[1]]
+
+    data_full = Data(
+        x=torch.zeros(graph_noisy.shape[0]),
+        edge_index=edge_index_full,
+        edge_attr=torch.stack(
+            [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant)], dim=1
+        ),
+    )
+
+    return data_full
+
+def create_partial_graph(graph_noisy):
+    adjacency_matrix_partial = graph_noisy >= 0
+    adjacency_matrix_partial = adjacency_matrix_partial.to_sparse()
+    edge_index_partial = adjacency_matrix_partial.indices()
+    edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
+
+    data_partial = Data(
+        x=torch.zeros(graph_noisy.shape[0]),
+        edge_index=edge_index_partial,
+        edge_attr=edge_attr_partial,
+    )
+
+    return data_partial
+
+
 
 class DatasetGrid(Dataset):
     """
@@ -35,7 +70,7 @@ class DatasetGrid(Dataset):
         self.list_graphs = generate_dataset("grid_graph", nb_graphs, nx=nx, ny=ny)
 
         self.t_array = torch.linspace(0, 1, nb_timestep)
-        self.beta_values = generate_beta_value(0.1, 5.0, self.t_array)
+        self.beta_values = generate_beta_value(MIN_BETA, MAX_BETA, self.t_array)
 
         self.mean_values, self.variance_values = compute_mean_value_whole_noise(
             self.t_array, self.beta_values
@@ -68,32 +103,11 @@ class DatasetGrid(Dataset):
         # convert the matrix to a torch tensor
         graph_noisy = torch.tensor(graph_noisy, dtype=torch.float)
 
-        # graph 1 :
-        adjacency_matrix_full = torch.ones_like(graph_noisy).to_sparse()
-
-        edge_index_full = adjacency_matrix_full.indices()
-        edge_attr_full = graph_noisy[edge_index_full[0], edge_index_full[1]]
-        edge_attr_gradiant = gradiant[edge_index_full[0], edge_index_full[1]]
-
-        data_full = Data(
-            x=torch.zeros(graph_noisy.shape[0]),
-            edge_index=edge_index_full,
-            edge_attr=torch.stack(
-                [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant)], dim=1
-            ),
-        )
+        # create the full graph
+        data_full = create_full_graph(graph_noisy, gradiant)
 
         # graph 2 :
-        adjacency_matrix_partial = graph_noisy >= 0
-        adjacency_matrix_partial = adjacency_matrix_partial.to_sparse()
-        edge_index_partial = adjacency_matrix_partial.indices()
-        edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
-
-        data_partial = Data(
-            x=torch.zeros(graph_noisy.shape[0]),
-            edge_index=edge_index_partial,
-            edge_attr=edge_attr_partial,
-        )
+        data_partial = create_partial_graph(graph_noisy)
 
         return {
             "graph_noisy": graph_noisy,

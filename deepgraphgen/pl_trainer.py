@@ -6,16 +6,23 @@ import matplotlib.pyplot as plt
 
 from deepgraphgen.graphGRAN import GRAN
 from deepgraphgen.utils import mixture_bernoulli_loss
-
 from deepgraphgen.graphGDP import GraphGDP
+from deepgraphgen.datasets_diffusion import (
+    compute_mean_value_whole_noise,
+    generate_beta_value,
+    MAX_BETA,
+    MIN_BETA,
+)
+from deepgraphgen.datasets_diffusion import create_full_graph, create_partial_graph
 
 import torch
 import lightning.pytorch as pl
-
 import torchmetrics
-
+import torch_geometric
 
 # we create the model
+
+
 class TrainerGRAN(pl.LightningModule):
     """
     Warper class for training
@@ -120,7 +127,8 @@ class TrainerGRAN(pl.LightningModule):
         # change format from HWC to CHW
         img = img.transpose((2, 0, 1))
 
-        self.logger.experiment.add_image("generated_graph", img, self.current_epoch)
+        self.logger.experiment.add_image(
+            "generated_graph", img, self.current_epoch)
 
     def configure_optimizers(self):
         """
@@ -143,6 +151,8 @@ class TrainerGraphGDP(pl.LightningModule):
             nb_max_node=nb_max_node,
         )
 
+        self.model = torch_geometric.compile(self.model, dynamic=True)
+
         # init the loss (MSE)
         self.loss_fn = torch.nn.MSELoss(reduction="mean")
 
@@ -163,10 +173,10 @@ class TrainerGraphGDP(pl.LightningModule):
         output = self.forward(graph_1, graph_2, t_value)
 
         # now we compute the loss
-        loss = self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
+        loss = self.loss_fn(output.squeeze().float(),
+                            graph_1.edge_attr[:, 1].float())
 
         return loss
-
 
     def training_step(self, batch, batch_idx):
         """
@@ -191,10 +201,64 @@ class TrainerGraphGDP(pl.LightningModule):
         return loss
 
     def on_validation_epoch_end(self):
-        pass
+        """
+        At the end of the epoch we want to generate some graphs
+        to check the algorithm global performance
+        """
 
     def configure_optimizers(self):
         """
         Function used to configure the optimizer
         """
         return torch.optim.Adam(self.parameters(), lr=0.0001)
+
+    def generate(self):
+        """
+        Reverse diffusion process after the training phase
+
+        Equation :
+        At-∆t = At + [1/2 β(t)At + β(t)sθ(At, A¯ t, t)] ∆t + β(t) √∆t z
+        """
+        t_array = torch.linspace(0, 1, 1000)
+        beta_values = generate_beta_value(MIN_BETA, MAX_BETA, t_array)
+
+        mean_values, variance_values = compute_mean_value_whole_noise(
+            t_array, beta_values
+        )
+
+        # first we initialize the adjacency matrix with gaussian noise
+        # 0 mean and the last variance value
+        graph_noisy = torch.randn(
+            self.nb_max_node, self.nb_max_node) * variance_values[-1]
+
+        # we create a zero gradient tensor
+        gradiant = torch.zeros_like(graph_noisy, requires_grad=False)
+
+        data_full = create_full_graph(graph_noisy, gradiant)
+        data_partial = create_partial_graph(graph_noisy)
+
+        delta_t = 0.001
+
+        for idx, time_step in enumerate(t_array[::-1]):
+            t_value = torch.tensor(time_step).unsqueeze(0) # should be a tensor of shape (1,)
+            output = self.forward(data_full, data_partial, t_value)
+
+            # init the new graph
+            s_matrix = torch.zeros_like(graph_noisy)
+
+            # fill with values from edge_attr (output) knowing data_full.edge_index
+            s_matrix[data_full.edge_index[0], data_full.edge_index[1]] = output
+
+            beta_current = beta_values[999 - idx]
+
+            # now we can update the graph_noisy according to the equation
+            graph_noisy = graph_noisy + beta_current * (0.5  * graph_noisy + s_matrix) * delta_t + \
+                        beta_current * torch.sqrt(delta_t) * torch.randn_like(graph_noisy)
+
+            # we update the data_full and data_partial
+            data_full = create_full_graph(graph_noisy, gradiant)
+            data_partial = create_partial_graph(graph_noisy)
+
+        return graph_noisy
+
+
