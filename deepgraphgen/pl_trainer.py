@@ -217,7 +217,7 @@ class TrainerGraphGDP(pl.LightningModule):
         Reverse diffusion process after the training phase
 
         Equation :
-        At-∆t = At + [1/2 β(t)At + β(t)sθ(At, A¯ t, t)] ∆t + β(t) √∆t z
+        At-∆t = At + [1/2 β(t)At + β(t)sθ(At, A¯ t, t)] ∆t + √β(t) √∆t z
         """
         t_array = torch.linspace(0, 1, 1000)
         beta_values = generate_beta_value(MIN_BETA, MAX_BETA, t_array)
@@ -253,7 +253,7 @@ class TrainerGraphGDP(pl.LightningModule):
 
             # now we can update the graph_noisy according to the equation
             graph_noisy = graph_noisy + beta_current * (0.5  * graph_noisy + s_matrix) * delta_t + \
-                        beta_current * torch.sqrt(delta_t) * torch.randn_like(graph_noisy)
+                        torch.sqrt(beta_current) * torch.sqrt(delta_t) * torch.randn_like(graph_noisy)
 
             # we update the data_full and data_partial
             data_full = create_full_graph(graph_noisy, gradiant)
