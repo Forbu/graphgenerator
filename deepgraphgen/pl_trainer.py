@@ -151,7 +151,7 @@ class TrainerGraphGDP(pl.LightningModule):
             nb_max_node=nb_max_node,
         )
 
-        self.model = torch_geometric.compile(self.model, dynamic=True)
+        #self.model = torch_geometric.compile(self.model, dynamic=True)
 
         # init the loss (MSE)
         self.loss_fn = torch.nn.MSELoss(reduction="mean")
@@ -205,6 +205,11 @@ class TrainerGraphGDP(pl.LightningModule):
         At the end of the epoch we want to generate some graphs
         to check the algorithm global performance
         """
+        example_graph = self.generate()
+
+        # log the matrix (100x100) as an image
+        self.logger.experiment.add_image(
+            "generated_graph", example_graph.unsqueeze(0), self.current_epoch)
 
     def configure_optimizers(self):
         """
@@ -226,10 +231,12 @@ class TrainerGraphGDP(pl.LightningModule):
             t_array, beta_values
         )
 
+        nb_node = 100
+
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
         graph_noisy = torch.randn(
-            self.nb_max_node, self.nb_max_node) * variance_values[-1]
+            nb_node, nb_node) * variance_values[-1]
 
         # we create a zero gradient tensor
         gradiant = torch.zeros_like(graph_noisy, requires_grad=False)
@@ -237,27 +244,34 @@ class TrainerGraphGDP(pl.LightningModule):
         data_full = create_full_graph(graph_noisy, gradiant)
         data_partial = create_partial_graph(graph_noisy)
 
+        data_full.batch = torch.zeros_like(data_full.x).long()
+        data_partial.batch = torch.zeros_like(data_partial.x).long()
+
         delta_t = 0.001
 
-        for idx, time_step in enumerate(t_array[::-1]):
+        for idx, time_step in enumerate(torch.flip(t_array, dims=[0])):
             t_value = torch.tensor(time_step).unsqueeze(0) # should be a tensor of shape (1,)
+
             output = self.forward(data_full, data_partial, t_value)
 
             # init the new graph
             s_matrix = torch.zeros_like(graph_noisy)
 
             # fill with values from edge_attr (output) knowing data_full.edge_index
-            s_matrix[data_full.edge_index[0], data_full.edge_index[1]] = output
+            s_matrix[data_full.edge_index[0], data_full.edge_index[1]] = output.squeeze()
 
             beta_current = beta_values[999 - idx]
 
             # now we can update the graph_noisy according to the equation
             graph_noisy = graph_noisy + beta_current * (0.5  * graph_noisy + s_matrix) * delta_t + \
-                        torch.sqrt(beta_current) * torch.sqrt(delta_t) * torch.randn_like(graph_noisy)
+                        torch.sqrt(torch.tensor(beta_current)) * torch.sqrt(torch.tensor(delta_t)) * torch.randn_like(graph_noisy)
 
             # we update the data_full and data_partial
             data_full = create_full_graph(graph_noisy, gradiant)
             data_partial = create_partial_graph(graph_noisy)
+
+            data_full.batch = torch.zeros_like(data_full.x).long()
+            data_partial.batch = torch.zeros_like(data_partial.x).long()
 
         return graph_noisy
 
