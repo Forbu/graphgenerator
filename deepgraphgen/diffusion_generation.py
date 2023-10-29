@@ -25,13 +25,10 @@ def compute_mean_value_noise(t_array, whole_beta_values, index_t):
 
     """
     # first we compute the integral - Int(0-t) 1/2 β(s)ds
-    integral_beta = 0.5 * np.trapz(whole_beta_values[:index_t], t_array[:index_t])
+    integral_beta = np.trapz(whole_beta_values[:index_t], t_array[:index_t])
 
-    # then we compute the integral - Int(0-t) β(s)ds
-    integral_beta_2 = np.trapz(whole_beta_values[:index_t], t_array[:index_t])
-
-    mean = np.exp(-integral_beta)
-    variance = 1 - np.exp(-integral_beta_2)
+    mean = np.exp(- 0.5 * integral_beta)
+    variance = 1 - np.exp(- integral_beta)
 
     return mean, variance
 
@@ -50,6 +47,21 @@ def compute_mean_value_whole_noise(t_array, whole_beta_values):
 
     return mean_values, variance_values
 
+def transform_to_symetric(matrix):
+    """
+    Function used to transform a matrix to a symetric one
+
+    Args:
+        matrix (np.tensor): matrix to transform
+
+    Returns:
+        matrix_symetric (np.tensor): symetric matrix
+    """
+    matrix_symetric = np.triu(matrix, k=0) + np.triu(matrix, k=0).T
+    matrix_symetric = matrix_symetric - np.diag(np.diag(matrix_symetric)) / 2
+
+    return matrix_symetric
+
 def add_noise_to_graph(graph, mean_beta, variance):
     """
     Function used to add noise to a graph
@@ -66,6 +78,7 @@ def add_noise_to_graph(graph, mean_beta, variance):
     mean_beta = graph * mean_beta
 
     noise_matrix = np.random.normal(mean_beta, np.sqrt(variance), size=mean_beta.shape)
+    noise_matrix = transform_to_symetric(noise_matrix)
 
     # now we can compute the gradiant of log p0t(At|A0)
     # we have : d/dA0 log p0t(At|A0) = - (At - mean_beta) / variance

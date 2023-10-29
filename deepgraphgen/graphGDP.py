@@ -45,13 +45,15 @@ class GraphGDP(nn.Module):
         self.gnn_global = nn.ModuleList()
 
         for i in range(self.nb_layer):
-            self.gnn_global.append(GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
+            self.gnn_global.append(
+                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
 
         # setup graph layers (GATv2Conv)
         self.gnn_filter = nn.ModuleList()
 
         for i in range(self.nb_layer):
-            self.gnn_filter.append(GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
+            self.gnn_filter.append(
+                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
@@ -95,10 +97,11 @@ class GraphGDP(nn.Module):
         subgraph_idx = graph_1.batch
 
         # create the time encoding
-        t_array_nodes = torch.index_select(t_value, 0, subgraph_idx).unsqueeze(1)
+        t_array_nodes = torch.index_select(
+            t_value, 0, subgraph_idx).unsqueeze(1)
 
         # encode the time
-        #print(t_array_nodes.shape)
+        # print(t_array_nodes.shape)
         t_encoding = self.time_encoder(t_array_nodes)
 
         graph_1.x = torch.concat((t_encoding, t_encoding), dim=1)
@@ -112,10 +115,12 @@ class GraphGDP(nn.Module):
         for i in range(self.nb_layer):
 
             output_graph_1 = F.relu(
-                self.gnn_global[i](graph_1.x, graph_1.edge_index, edge_encoding_graph_1)
+                self.gnn_global[i](
+                    graph_1.x, graph_1.edge_index, edge_encoding_graph_1)
             )
             output_graph_2 = F.relu(
-                self.gnn_filter[i](graph_2.x, graph_2.edge_index, edge_encoding_graph_2)
+                self.gnn_filter[i](
+                    graph_2.x, graph_2.edge_index, edge_encoding_graph_2)
             )
 
             graph_1.x = torch.concat((output_graph_2, output_graph_1), dim=1)
@@ -125,7 +130,8 @@ class GraphGDP(nn.Module):
         # we need to compute the score for each edge of the graph
         # we will use a MLP to compute this score (decoding layer)
         edges_input_graph_1 = torch.cat(
-            (graph_1.x[graph_1.edge_index[0]], graph_1.x[graph_1.edge_index[1]]), dim=1
+            (graph_1.x[graph_1.edge_index[0]],
+             graph_1.x[graph_1.edge_index[1]]), dim=1
         )
 
         edges_features = self.decoding_layer_edge(edges_input_graph_1)

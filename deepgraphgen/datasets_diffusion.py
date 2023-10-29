@@ -19,7 +19,7 @@ from deepgraphgen.diffusion_generation import (
 
 undirected_transform = T.ToUndirected()
 
-MAX_BETA = 5.0
+MAX_BETA = 10.
 MIN_BETA = 0.1
 
 def create_full_graph(graph_noisy, gradiant):
@@ -52,8 +52,6 @@ def create_partial_graph(graph_noisy):
     )
 
     return data_partial
-
-
 
 class DatasetGrid(Dataset):
     """

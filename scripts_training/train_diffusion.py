@@ -97,7 +97,8 @@ if __name__ == "__main__":
         logger=logger,
         accelerator=args.device,
         callbacks=[checkpoint_callback],
-        limit_train_batches=0.05,
+        limit_train_batches=0.02,
+        limit_val_batches=0.05,
     )
 
     # we train the model

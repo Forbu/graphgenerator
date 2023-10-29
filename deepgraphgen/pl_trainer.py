@@ -14,11 +14,14 @@ from deepgraphgen.datasets_diffusion import (
     MIN_BETA,
 )
 from deepgraphgen.datasets_diffusion import create_full_graph, create_partial_graph
+from deepgraphgen.diffusion_generation import transform_to_symetric
 
 import torch
 import lightning.pytorch as pl
 import torchmetrics
 import torch_geometric
+
+import matplotlib.pyplot as plt
 
 # we create the model
 
@@ -151,7 +154,7 @@ class TrainerGraphGDP(pl.LightningModule):
             nb_max_node=nb_max_node,
         )
 
-        #self.model = torch_geometric.compile(self.model, dynamic=True)
+        # self.model = torch_geometric.compile(self.model, dynamic=True)
 
         # init the loss (MSE)
         self.loss_fn = torch.nn.MSELoss(reduction="mean")
@@ -196,7 +199,7 @@ class TrainerGraphGDP(pl.LightningModule):
         loss = self.compute_loss(batch)
 
         # log the loss
-        self.log("val_loss", loss, batch_size=batch["data_full"].batch)
+        self.log("val_loss", loss)
 
         return loss
 
@@ -205,17 +208,42 @@ class TrainerGraphGDP(pl.LightningModule):
         At the end of the epoch we want to generate some graphs
         to check the algorithm global performance
         """
-        example_graph = self.generate()
+        self.eval()
+        with torch.no_grad():
+            exemples_graphs = self.generate()
 
-        # log the matrix (100x100) as an image
-        self.logger.experiment.add_image(
-            "generated_graph", example_graph.unsqueeze(0), self.current_epoch)
+        print("Generated graphs : ", exemples_graphs[0].shape)
+
+        for idx, example_graph in enumerate(exemples_graphs):
+
+            # create an png image
+            plt.imshow(example_graph, vmin=-1, vmax=1)
+
+            # add colorbar
+            plt.colorbar()
+
+            # save the images (matplotlib) (overwrite) and log it
+            name_img = "graph_{}_epoch.png".format(self.current_epoch)
+
+            plt.savefig(name_img)
+
+            # clear the plot
+            plt.clf()
+
+            img = plt.imread(name_img)[:, :, :3]
+
+            # change format from HWC to CHW
+            img = img.transpose((2, 0, 1))
+
+            # log the matrix (100x100) as an image
+            self.logger.experiment.add_image(
+                "generated_graph_{}".format(idx), img, self.current_epoch)
 
     def configure_optimizers(self):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.Adam(self.parameters(), lr=0.0001)
+        return torch.optim.Adam(self.parameters(), lr=0.00002)
 
     def generate(self):
         """
@@ -236,7 +264,10 @@ class TrainerGraphGDP(pl.LightningModule):
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
         graph_noisy = torch.randn(
-            nb_node, nb_node) * variance_values[-1]
+            nb_node, nb_node) * torch.sqrt(torch.tensor(variance_values[-1]))
+
+        graph_noisy = transform_to_symetric(graph_noisy.cpu().numpy())
+        graph_noisy = torch.from_numpy(graph_noisy).float()
 
         # we create a zero gradient tensor
         gradiant = torch.zeros_like(graph_noisy, requires_grad=False)
@@ -249,8 +280,13 @@ class TrainerGraphGDP(pl.LightningModule):
 
         delta_t = 0.001
 
+        register_step = [0, 250, 500, 750, 999]
+
+        images_register = []
+
         for idx, time_step in enumerate(torch.flip(t_array, dims=[0])):
-            t_value = torch.tensor(time_step).unsqueeze(0) # should be a tensor of shape (1,)
+            t_value = torch.tensor(time_step).unsqueeze(
+                0)  # should be a tensor of shape (1,)
 
             output = self.forward(data_full, data_partial, t_value)
 
@@ -258,13 +294,26 @@ class TrainerGraphGDP(pl.LightningModule):
             s_matrix = torch.zeros_like(graph_noisy)
 
             # fill with values from edge_attr (output) knowing data_full.edge_index
-            s_matrix[data_full.edge_index[0], data_full.edge_index[1]] = output.squeeze()
+            s_matrix[data_full.edge_index[0],
+                     data_full.edge_index[1]] = output.squeeze()
 
             beta_current = beta_values[999 - idx]
 
+            symetric_noise = torch.randn_like(graph_noisy)
+            symetric_noise = transform_to_symetric(symetric_noise.cpu().numpy())
+            symetric_noise = torch.from_numpy(symetric_noise).float()
+
+            if idx == 0:
+                print("added value")
+                print(beta_current * (0.5 * graph_noisy + s_matrix) * delta_t)
+                print("scond value")
+                print(torch.sqrt(torch.tensor(beta_current)) * torch.sqrt(torch.tensor(delta_t)) * torch.randn_like(graph_noisy))
+
             # now we can update the graph_noisy according to the equation
-            graph_noisy = graph_noisy + beta_current * (0.5  * graph_noisy + s_matrix) * delta_t + \
-                        torch.sqrt(torch.tensor(beta_current)) * torch.sqrt(torch.tensor(delta_t)) * torch.randn_like(graph_noisy)
+            graph_noisy = graph_noisy + beta_current * (0.5 * graph_noisy + s_matrix) * delta_t + \
+                torch.sqrt(torch.tensor(beta_current)) * \
+                torch.sqrt(torch.tensor(delta_t)) * \
+                symetric_noise
 
             # we update the data_full and data_partial
             data_full = create_full_graph(graph_noisy, gradiant)
@@ -273,6 +322,7 @@ class TrainerGraphGDP(pl.LightningModule):
             data_full.batch = torch.zeros_like(data_full.x).long()
             data_partial.batch = torch.zeros_like(data_partial.x).long()
 
-        return graph_noisy
+            if idx in register_step:
+                images_register.append(graph_noisy.detach().numpy())
 
-
+        return images_register
