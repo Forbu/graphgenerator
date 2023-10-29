@@ -47,6 +47,14 @@ class GraphGDP(nn.Module):
         # setup graph layers (GATv2Conv)
         self.gnn_filter = nn.ModuleList()
 
+        # mlp interaction
+        self.mlp_interaction = MLP(
+            in_dim=hidden_dim * 3,
+            out_dim=hidden_dim,
+            hidden_dim=hidden_dim,
+            hidden_layers=2,
+        )
+
         for _ in range(self.nb_layer):
             self.gnn_global.append(
                 GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
@@ -55,7 +63,7 @@ class GraphGDP(nn.Module):
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
-            in_dim=hidden_dim * 5, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
+            in_dim=hidden_dim * 2, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
         )
 
         self.apply(init_weights)
@@ -110,6 +118,18 @@ class GraphGDP(nn.Module):
                     graph_2.x, graph_2.edge_index, edge_encoding_graph_2)
             )
 
+            # we update edge_encoding_graph_1 and edge_encoding_graph_2
+            # with an MLP model
+            edge_encoding_graph_1_aggregate = torch.cat(
+                (output_graph_1[graph_1.edge_index[0]],
+                 output_graph_1[graph_1.edge_index[1]],
+                 edge_encoding_graph_1
+                 ), dim=1
+            )
+
+            edge_encoding_graph_1 = self.mlp_interaction(
+                edge_encoding_graph_1_aggregate)
+
             graph_1.x = torch.concat((output_graph_1, output_graph_2), dim=1)
             graph_2.x = torch.concat((output_graph_1, output_graph_2), dim=1)
 
@@ -117,10 +137,8 @@ class GraphGDP(nn.Module):
         # we need to compute the score for each edge of the graph
         # we will use a MLP to compute this score (decoding layer)
         edges_input_graph_1 = torch.cat(
-            (graph_1.x[graph_1.edge_index[0]],
-             graph_1.x[graph_1.edge_index[1]], edge_encoding_graph_1_init), dim=1
+            (edge_encoding_graph_1, edge_encoding_graph_1_init), dim=1
         )
-
 
         edges_features = self.decoding_layer_edge(edges_input_graph_1)
 
