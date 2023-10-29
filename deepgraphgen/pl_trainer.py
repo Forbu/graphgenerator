@@ -3,6 +3,7 @@ Helper class to train the model (with pytorch lightning)
 """
 import networkx as nx
 import matplotlib.pyplot as plt
+import numpy as np
 
 from deepgraphgen.graphGRAN import GRAN
 from deepgraphgen.utils import mixture_bernoulli_loss
@@ -162,6 +163,14 @@ class TrainerGraphGDP(pl.LightningModule):
         # init MSE metric
         self.train_accuracy = torchmetrics.MeanSquaredError()
 
+        # variable for generation
+        self.t_array = torch.linspace(0, 1, 1000)
+        self.beta_values = generate_beta_value(MIN_BETA, MAX_BETA, self.t_array)
+
+        self.mean_values, self.variance_values = compute_mean_value_whole_noise(
+            self.t_array, self.beta_values
+        )
+
     def forward(self, graph_1, graph_2, t_value):
         return self.model(graph_1, graph_2, t_value)
 
@@ -252,19 +261,13 @@ class TrainerGraphGDP(pl.LightningModule):
         Equation :
         At-∆t = At + [1/2 β(t)At + β(t)sθ(At, A¯ t, t)] ∆t + √β(t) √∆t z
         """
-        t_array = torch.linspace(0, 1, 1000)
-        beta_values = generate_beta_value(MIN_BETA, MAX_BETA, t_array)
-
-        mean_values, variance_values = compute_mean_value_whole_noise(
-            t_array, beta_values
-        )
 
         nb_node = 100
 
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
         graph_noisy = torch.randn(
-            nb_node, nb_node) * torch.sqrt(torch.tensor(variance_values[-1]))
+            nb_node, nb_node) * torch.sqrt(torch.tensor(self.variance_values[-1]))
 
         graph_noisy = transform_to_symetric(graph_noisy.cpu().numpy())
         graph_noisy = torch.from_numpy(graph_noisy).float()
@@ -284,7 +287,7 @@ class TrainerGraphGDP(pl.LightningModule):
 
         images_register = []
 
-        for idx, time_step in enumerate(torch.flip(t_array, dims=[0])):
+        for idx, time_step in enumerate(torch.flip(self.t_array, dims=[0])):
             t_value = torch.tensor(time_step).unsqueeze(
                 0)  # should be a tensor of shape (1,)
 
@@ -297,7 +300,7 @@ class TrainerGraphGDP(pl.LightningModule):
             s_matrix[data_full.edge_index[0],
                      data_full.edge_index[1]] = output.squeeze()
 
-            beta_current = beta_values[999 - idx]
+            beta_current = self.beta_values[999 - idx]
 
             symetric_noise = torch.randn_like(graph_noisy)
             symetric_noise = transform_to_symetric(symetric_noise.cpu().numpy())
