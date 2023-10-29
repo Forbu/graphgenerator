@@ -22,18 +22,22 @@ undirected_transform = T.ToUndirected()
 MAX_BETA = 10.
 MIN_BETA = 0.1
 
-def create_full_graph(graph_noisy, gradiant):
+def create_full_graph(graph_noisy, gradiant, graph_init=None):
     adjacency_matrix_full = torch.ones_like(graph_noisy).to_sparse()
+
+    if graph_init is None:
+        graph_init = torch.zeros_like(graph_noisy)
 
     edge_index_full = adjacency_matrix_full.indices()
     edge_attr_full = graph_noisy[edge_index_full[0], edge_index_full[1]]
     edge_attr_gradiant = gradiant[edge_index_full[0], edge_index_full[1]]
+    edge_attr_init = graph_init[edge_index_full[0], edge_index_full[1]]
 
     data_full = Data(
         x=torch.zeros(graph_noisy.shape[0]),
         edge_index=edge_index_full,
         edge_attr=torch.stack(
-            [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant)], dim=1
+            [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant), torch.tensor(edge_attr_init)], dim=1
         ),
     )
 
@@ -102,7 +106,7 @@ class DatasetGrid(Dataset):
         graph_noisy = torch.tensor(graph_noisy, dtype=torch.float)
 
         # create the full graph
-        data_full = create_full_graph(graph_noisy, gradiant)
+        data_full = create_full_graph(graph_noisy, gradiant, grid_adjacency_matrix)
 
         # graph 2 :
         data_partial = create_partial_graph(graph_noisy)

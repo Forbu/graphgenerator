@@ -77,7 +77,7 @@ if __name__ == "__main__":
     )
 
     print("Training on graphs")
-    model = TrainerGraphGDP(nb_layer=2, hidden_dim=16, nb_max_node=100)
+    model = TrainerGraphGDP(nb_layer=4, hidden_dim=16, nb_max_node=100)
 
     # we need a custom tensboard logger
     logger = pl.loggers.TensorBoardLogger("logs/", name="diffusion_" + args.dataset_type)

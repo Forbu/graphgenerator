@@ -13,7 +13,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import GATv2Conv
 from torch_geometric.nn.pool import global_mean_pool
 
-from deepgraphgen.utils import MLP
+from deepgraphgen.utils import MLP, init_weights, MPGNNConv
 
 
 class GraphGDP(nn.Module):
@@ -44,36 +44,21 @@ class GraphGDP(nn.Module):
         # setup graph layers (GATv2Conv)
         self.gnn_global = nn.ModuleList()
 
-        for i in range(self.nb_layer):
-            self.gnn_global.append(
-                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
-
         # setup graph layers (GATv2Conv)
         self.gnn_filter = nn.ModuleList()
 
-        for i in range(self.nb_layer):
+        for _ in range(self.nb_layer):
+            self.gnn_global.append(
+                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
             self.gnn_filter.append(
                 GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
-            in_dim=hidden_dim * 4, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
+            in_dim=hidden_dim * 5, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
         )
 
-        self.reset_parameters()
-
-    def reset_parameters(self):
-        """
-        Reset the parameters of the model
-        """
-        self.encoder_edges.reset_parameters()
-        self.time_encoder.reset_parameters()
-
-        for i in range(self.nb_layer):
-            self.gnn_filter[i].reset_parameters()
-            self.gnn_global[i].reset_parameters()
-
-        self.decoding_layer_edge.reset_parameters()
+        self.apply(init_weights)
 
     def forward(self, graph_1, graph_2, t_value):
         """
@@ -109,21 +94,23 @@ class GraphGDP(nn.Module):
 
         # edge encoding
         edge_encoding_graph_1 = self.encoder_edges(edge_attr_full.float())
+        edge_encoding_graph_1_init = edge_encoding_graph_1.clone()
         edge_encoding_graph_2 = self.encoder_edges(edge_attr_partial.float())
 
         # compute the global representation of the graph
         for i in range(self.nb_layer):
 
-            output_graph_1 = F.relu(
+            output_graph_1 = (
                 self.gnn_global[i](
                     graph_1.x, graph_1.edge_index, edge_encoding_graph_1)
             )
-            output_graph_2 = F.relu(
+
+            output_graph_2 = (
                 self.gnn_filter[i](
                     graph_2.x, graph_2.edge_index, edge_encoding_graph_2)
             )
 
-            graph_1.x = torch.concat((output_graph_2, output_graph_1), dim=1)
+            graph_1.x = torch.concat((output_graph_1, output_graph_2), dim=1)
             graph_2.x = torch.concat((output_graph_1, output_graph_2), dim=1)
 
         # now we want to compute the updated edge score
@@ -131,8 +118,9 @@ class GraphGDP(nn.Module):
         # we will use a MLP to compute this score (decoding layer)
         edges_input_graph_1 = torch.cat(
             (graph_1.x[graph_1.edge_index[0]],
-             graph_1.x[graph_1.edge_index[1]]), dim=1
+             graph_1.x[graph_1.edge_index[1]], edge_encoding_graph_1_init), dim=1
         )
+
 
         edges_features = self.decoding_layer_edge(edges_input_graph_1)
 
