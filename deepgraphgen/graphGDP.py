@@ -91,7 +91,7 @@ class GraphGDP(nn.Module):
 
         # create the time encoding
         t_array_nodes = torch.index_select(
-            t_value, 0, subgraph_idx).unsqueeze(1)
+            t_value, 0, subgraph_idx).unsqueeze(1).to(graph_1.x.device)
 
         # encode the time
         # print(t_array_nodes.shape)

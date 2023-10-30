@@ -248,6 +248,33 @@ class TrainerGraphGDP(pl.LightningModule):
             self.logger.experiment.add_image(
                 "generated_graph_{}".format(idx), img, self.current_epoch)
 
+
+            # now we also want to transform the graph into a networkx graph to plot it
+            adjacency_matrix = example_graph >= 0.5
+
+            # create the graph
+            graph = nx.from_numpy_array(adjacency_matrix)
+
+            # plot the graph
+            nx.draw(graph, with_labels=True)
+
+            # save the images (matplotlib) (overwrite) and log it
+            name_img = "graph_{}_epoch.png".format(self.current_epoch)
+
+            plt.savefig(name_img)
+
+            # clear the plot
+            plt.clf()
+
+            img = plt.imread(name_img)[:, :, :3]
+
+            # change format from HWC to CHW
+            img = img.transpose((2, 0, 1))
+
+            # log the matrix (100x100) as an image
+            self.logger.experiment.add_image(
+                "generated_graph_{}_networkx".format(idx), img, self.current_epoch)
+
     def configure_optimizers(self):
         """
         Function used to configure the optimizer

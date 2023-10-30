@@ -44,7 +44,7 @@ if __name__ == "__main__":
     )
 
     # batch size
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
 
     # nb epoch training
     parser.add_argument(
@@ -99,6 +99,9 @@ if __name__ == "__main__":
         callbacks=[checkpoint_callback],
         limit_train_batches=0.02,
         limit_val_batches=0.05,
+        gradient_clip_val=1.0,
+        # gradiant accumulation
+        accumulate_grad_batches=8,
     )
 
     # we train the model
