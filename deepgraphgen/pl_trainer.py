@@ -355,6 +355,6 @@ class TrainerGraphGDP(pl.LightningModule):
             data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)
 
             if idx in register_step:
-                images_register.append(graph_noisy.detach().numpy())
+                images_register.append(graph_noisy.cpu().detach().numpy())
 
         return images_register
