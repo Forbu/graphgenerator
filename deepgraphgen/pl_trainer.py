@@ -318,7 +318,7 @@ class TrainerGraphGDP(pl.LightningModule):
 
         for idx, time_step in enumerate(torch.flip(self.t_array, dims=[0])):
             t_value = torch.tensor(time_step).unsqueeze(
-                0).to(devise)  # should be a tensor of shape (1,)
+                0).to(device)  # should be a tensor of shape (1,)
 
             output = self.forward(data_full, data_partial, t_value)
 
