@@ -296,7 +296,7 @@ class TrainerGraphGDP(pl.LightningModule):
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
         graph_noisy = torch.randn(
-            nb_node, nb_node) * torch.sqrt(torch.tensor(self.variance_values[-1])).to(device)
+            nb_node, nb_node).to(device) * torch.sqrt(torch.tensor(self.variance_values[-1])).to(device)
 
         graph_noisy = transform_to_symetric(graph_noisy.cpu().numpy())
         graph_noisy = torch.from_numpy(graph_noisy).float().to(device)
