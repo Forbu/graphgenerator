@@ -288,25 +288,27 @@ class TrainerGraphGDP(pl.LightningModule):
         Equation :
         At-∆t = At + [1/2 β(t)At + β(t)sθ(At, A¯ t, t)] ∆t + √β(t) √∆t z
         """
+        # here we get the device
+        device = self.device
 
         nb_node = 100
 
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
         graph_noisy = torch.randn(
-            nb_node, nb_node) * torch.sqrt(torch.tensor(self.variance_values[-1]))
+            nb_node, nb_node) * torch.sqrt(torch.tensor(self.variance_values[-1])).to(device)
 
         graph_noisy = transform_to_symetric(graph_noisy.cpu().numpy())
-        graph_noisy = torch.from_numpy(graph_noisy).float()
+        graph_noisy = torch.from_numpy(graph_noisy).float().to(device)
 
         # we create a zero gradient tensor
-        gradiant = torch.zeros_like(graph_noisy, requires_grad=False)
+        gradiant = torch.zeros_like(graph_noisy, requires_grad=False).to(device)
 
         data_full = create_full_graph(graph_noisy, gradiant)
         data_partial = create_partial_graph(graph_noisy)
 
-        data_full.batch = torch.zeros_like(data_full.x).long()
-        data_partial.batch = torch.zeros_like(data_partial.x).long()
+        data_full.batch = torch.zeros_like(data_full.x).long().to(device)
+        data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)
 
         delta_t = 0.001
 
@@ -316,12 +318,12 @@ class TrainerGraphGDP(pl.LightningModule):
 
         for idx, time_step in enumerate(torch.flip(self.t_array, dims=[0])):
             t_value = torch.tensor(time_step).unsqueeze(
-                0)  # should be a tensor of shape (1,)
+                0).to(devise)  # should be a tensor of shape (1,)
 
             output = self.forward(data_full, data_partial, t_value)
 
             # init the new graph
-            s_matrix = torch.zeros_like(graph_noisy)
+            s_matrix = torch.zeros_like(graph_noisy).to(device)
 
             # fill with values from edge_attr (output) knowing data_full.edge_index
             s_matrix[data_full.edge_index[0],
@@ -329,9 +331,9 @@ class TrainerGraphGDP(pl.LightningModule):
 
             beta_current = self.beta_values[999 - idx]
 
-            symetric_noise = torch.randn_like(graph_noisy)
+            symetric_noise = torch.randn_like(graph_noisy).to(device)
             symetric_noise = transform_to_symetric(symetric_noise.cpu().numpy())
-            symetric_noise = torch.from_numpy(symetric_noise).float()
+            symetric_noise = torch.from_numpy(symetric_noise).float().to(device)
 
             if idx == 0:
                 print("added value")
@@ -349,8 +351,8 @@ class TrainerGraphGDP(pl.LightningModule):
             data_full = create_full_graph(graph_noisy, gradiant)
             data_partial = create_partial_graph(graph_noisy)
 
-            data_full.batch = torch.zeros_like(data_full.x).long()
-            data_partial.batch = torch.zeros_like(data_partial.x).long()
+            data_full.batch = torch.zeros_like(data_full.x).long().to(device)
+            data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)
 
             if idx in register_step:
                 images_register.append(graph_noisy.detach().numpy())
