@@ -94,7 +94,7 @@ class GraphGDP(nn.Module):
             t_value, 0, subgraph_idx.to(graph_1.x.device)).unsqueeze(1).to(graph_1.x.device)
 
         print("t_array_nodes.device : ", t_array_nodes.device)
-        print("self.time_encoder.device : ", self.time_encoder.device")
+        print("self.time_encoder.device : ", self.time_encoder.device)
         # encode the time
         # print(t_array_nodes.shape)
         t_encoding = self.time_encoder(t_array_nodes)
