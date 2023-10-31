@@ -24,6 +24,7 @@ undirected_transform = T.ToUndirected()
 MAX_BETA = 10.0
 MIN_BETA = 0.1
 NB_RANDOM_WALK = 4
+THRESHOLD = 0.2
 
 
 def create_full_graph(graph_noisy, gradiant, graph_init=None):
@@ -63,14 +64,14 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
     # using the Adjacency matrix / degree
     RW = torch.tensor(adjacency_matrix_partial) / degree.unsqueeze(1)
     RW.fill_diagonal_(0)
-    
+
     list_RW_matrix = []
 
     value = RW
 
     for _ in range(NB_RANDOM_WALK):
         # create the random walk matrix
-        value = RW * value
+        value = torch.matmul(RW, value)
 
         list_RW_matrix.append(value)
 
@@ -82,16 +83,20 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
 
 
 def create_partial_graph(graph_noisy):
-    adjacency_matrix_partial = graph_noisy >= 0
+    adjacency_matrix_partial = graph_noisy >= THRESHOLD
+
+    # force diagonal to be 0
+    adjacency_matrix_partial.fill_diagonal_(0)
+
     adjacency_matrix_partial = adjacency_matrix_partial.to_sparse()
     edge_index_partial = adjacency_matrix_partial.indices()
     edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
 
     # first we compute the degree of each node in the graph
     degree = (graph_noisy >= 0).sum(dim=1)
-    
+
     # replace 0 by 1
-    degree[degree == 0.] = 1.
+    degree[degree == 0.0] = 1.0
 
     RW_matrix = compute_random_walk_matrix(graph_noisy >= 0, degree)
 
