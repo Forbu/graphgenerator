@@ -19,8 +19,9 @@ from deepgraphgen.diffusion_generation import (
 
 undirected_transform = T.ToUndirected()
 
-MAX_BETA = 10.
+MAX_BETA = 10.0
 MIN_BETA = 0.1
+NB_RANDOM_WALK = 4
 
 
 def create_full_graph(graph_noisy, gradiant, graph_init=None):
@@ -40,22 +41,55 @@ def create_full_graph(graph_noisy, gradiant, graph_init=None):
         x=torch.zeros(graph_noisy.shape[0]).to(device),
         edge_index=edge_index_full,
         edge_attr=torch.stack(
-            [torch.tensor(edge_attr_full), torch.tensor(edge_attr_gradiant), torch.tensor(edge_attr_init)], dim=1
+            [
+                torch.tensor(edge_attr_full),
+                torch.tensor(edge_attr_gradiant),
+                torch.tensor(edge_attr_init),
+            ],
+            dim=1,
         ),
     )
 
     return data_full
 
 
+def compute_random_walk_matrix(adjacency_matrix_partial, degree):
+    # we we create N random walk for each node
+    # using the Adjacency matrix / degree
+    RW = torch.tensor(adjacency_matrix_partial) / degree
+    list_RW_matrix = []
+
+    value = RW
+
+    for i in range(NB_RANDOM_WALK):
+        # create the random walk matrix
+        value = RW * value
+
+        list_RW_matrix.append(value)
+
+    # we concat all the matrix (W, W, NB_RANDOM_WALK)
+    RW_matrix = torch.stack(list_RW_matrix, dim=2)
+
+    return RW_matrix
+
+
 def create_partial_graph(graph_noisy):
     adjacency_matrix_partial = graph_noisy >= 0
     adjacency_matrix_partial = adjacency_matrix_partial.to_sparse()
     edge_index_partial = adjacency_matrix_partial.indices()
-    edge_attr_partial = graph_noisy[edge_index_partial[0],
-                                    edge_index_partial[1]]
+    edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
+
+    # first we compute the degree of each node in the graph
+    degree = torch.zeros(graph_noisy.shape[0])
+    degree[edge_index_partial[0]] += 1
+
+    RW_matrix = compute_random_walk_matrix(adjacency_matrix_partial, degree)
+
+    # we retrieve the node features (the diagonal of the matrix)
+    nodes_features = RW_matrix.diagonal(axis1=0, axis2=1)
 
     data_partial = Data(
-        x=torch.zeros(graph_noisy.shape[0]),
+        x=degree,
         edge_index=edge_index_partial,
         edge_attr=edge_attr_partial,
     )
@@ -75,12 +109,10 @@ class DatasetGrid(Dataset):
         self.nb_timestep = nb_timestep
         self.n = nx * ny
 
-        self.list_graphs = generate_dataset(
-            "grid_graph", nb_graphs, nx=nx, ny=ny)
+        self.list_graphs = generate_dataset("grid_graph", nb_graphs, nx=nx, ny=ny)
 
         self.t_array = torch.linspace(0, 1, nb_timestep)
-        self.beta_values = generate_beta_value(
-            MIN_BETA, MAX_BETA, self.t_array)
+        self.beta_values = generate_beta_value(MIN_BETA, MAX_BETA, self.t_array)
 
         self.mean_values, self.variance_values = compute_mean_value_whole_noise(
             self.t_array, self.beta_values
@@ -114,8 +146,7 @@ class DatasetGrid(Dataset):
         graph_noisy = torch.tensor(graph_noisy, dtype=torch.float)
 
         # create the full graph
-        data_full = create_full_graph(
-            graph_noisy, gradiant, grid_adjacency_matrix)
+        data_full = create_full_graph(graph_noisy, gradiant, grid_adjacency_matrix)
 
         # graph 2 :
         data_partial = create_partial_graph(graph_noisy)

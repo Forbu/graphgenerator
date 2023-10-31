@@ -48,12 +48,12 @@ if __name__ == "__main__":
 
     # nb epoch training
     parser.add_argument(
-        "--nb_epoch", type=int, default=10, help="Number of epoch to train"
+        "--nb_epoch", type=int, default=20, help="Number of epoch to train"
     )
 
     # gpu or cpu (str)
     parser.add_argument(
-        "--device", type=str, default="cpu", help="Device to use for training"
+        "--device", type=str, default="gpu", help="Device to use for training"
     )
 
     # retrieve the arguments
@@ -77,7 +77,7 @@ if __name__ == "__main__":
     )
 
     print("Training on graphs")
-    model = TrainerGraphGDP(nb_layer=4, hidden_dim=16, nb_max_node=100)
+    model = TrainerGraphGDP(nb_layer=args.nb_layer, hidden_dim=args.hidden_dim, nb_max_node=100)
 
     # we need a custom tensboard logger
     logger = pl.loggers.TensorBoardLogger("logs/", name="diffusion_" + args.dataset_type)
@@ -101,7 +101,7 @@ if __name__ == "__main__":
         limit_val_batches=0.05,
         gradient_clip_val=1.0,
         # gradiant accumulation
-        accumulate_grad_batches=8,
+        accumulate_grad_batches=1,
     )
 
     # we train the model

@@ -127,8 +127,8 @@ class GraphGDP(nn.Module):
                  ), dim=1
             )
 
-            edge_encoding_graph_1 = self.mlp_interaction(
-                edge_encoding_graph_1_aggregate)
+            edge_encoding_graph_1 = F.relu(self.mlp_interaction(
+                edge_encoding_graph_1_aggregate) + edge_encoding_graph_1)
 
             graph_1.x = torch.concat((output_graph_1, output_graph_2), dim=1)
             graph_2.x = torch.concat((output_graph_1, output_graph_2), dim=1)
