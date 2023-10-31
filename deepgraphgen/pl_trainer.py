@@ -169,7 +169,8 @@ class TrainerGraphGDP(pl.LightningModule):
         self.loss_fn = torch.nn.MSELoss(reduction="mean")
 
         # init MSE metric
-        self.train_accuracy = torchmetrics.MeanSquaredError()
+        self.train_mse = torchmetrics.MeanSquaredError()
+        self.val_mse = torchmetrics.MeanSquaredError()
 
         # variable for generation
         self.t_array = torch.linspace(0, 1, 1000)
@@ -182,7 +183,20 @@ class TrainerGraphGDP(pl.LightningModule):
     def forward(self, graph_1, graph_2, t_value):
         return self.model(graph_1, graph_2, t_value)
 
-    def compute_loss(self, batch):
+    def compute_weight_loss(self, graph_1, t_value):
+        # compute the weight
+        subgraph_idx = graph_1.batch
+
+        # create the time encoding
+        t_array_nodes = (
+            torch.index_select(t_value, 0, subgraph_idx.to(graph_1.x.device))
+            .unsqueeze(1)
+            .to(graph_1.x.device)
+        )
+
+        return 1 / (0.1 + t_array_nodes)
+
+    def compute_loss(self, batch, type="train"):
         """
         Function used to compute the loss
         """
@@ -192,8 +206,26 @@ class TrainerGraphGDP(pl.LightningModule):
 
         output = self.forward(graph_1, graph_2, t_value)
 
+        def weighted_mse_loss(input, target, weight):
+            return torch.sum(weight * (input - target) ** 2)
+
+        weight_loss = self.compute_weight_loss(graph_1, t_value)
+
         # now we compute the loss
-        loss = self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
+        loss = weighted_mse_loss(
+            output.squeeze().float(), graph_1.edge_attr[:, 1].float(), weight_loss
+        )
+        # self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
+
+        # compute the MSE
+        if type == "train":
+            mse = self.train_mse(
+                output.squeeze().float(), graph_1.edge_attr[:, 1].float()
+            )
+        else:
+            mse = self.val_mse(
+                output.squeeze().float(), graph_1.edge_attr[:, 1].float()
+            )
 
         return loss
 
@@ -201,7 +233,7 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used for the training step
         """
-        loss = self.compute_loss(batch)
+        loss = self.compute_loss(batch, type="train")
 
         # log the loss
         self.log("train_loss", loss)
@@ -212,12 +244,19 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used for the validation step
         """
-        loss = self.compute_loss(batch)
+        loss = self.compute_loss(batch, type="val")
 
         # log the loss
         self.log("val_loss", loss)
 
         return loss
+
+    def on_train_epoch_end(self):
+        # we log the mse value
+        self.log("train_mse", self.train_mse.compute())
+
+        # we reset the metric
+        self.train_mse.reset()
 
     def on_validation_epoch_end(self):
         """
@@ -282,11 +321,17 @@ class TrainerGraphGDP(pl.LightningModule):
                 "generated_graph_{}_networkx".format(idx), img, self.current_epoch
             )
 
+        # we also log the mse value
+        self.log("val_mse", self.val_mse.compute())
+
+        # we reset the metric
+        self.val_mse.reset()
+
     def configure_optimizers(self):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.Adam(self.parameters(), lr=0.00002)
+        return torch.optim.Adam(self.parameters(), lr=0.00005)
 
     def generate(self):
         """
