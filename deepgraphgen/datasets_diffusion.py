@@ -54,14 +54,17 @@ def create_full_graph(graph_noisy, gradiant, graph_init=None):
 
 
 def compute_random_walk_matrix(adjacency_matrix_partial, degree):
+    """
+    Function used to compute the random walk embedding information
+    """
     # we we create N random walk for each node
     # using the Adjacency matrix / degree
-    RW = torch.tensor(adjacency_matrix_partial) / degree
+    RW = torch.tensor(adjacency_matrix_partial) / degree.unsqueeze(1)
     list_RW_matrix = []
 
     value = RW
 
-    for i in range(NB_RANDOM_WALK):
+    for _ in range(NB_RANDOM_WALK):
         # create the random walk matrix
         value = RW * value
 
@@ -81,15 +84,26 @@ def create_partial_graph(graph_noisy):
 
     # first we compute the degree of each node in the graph
     degree = torch.zeros(graph_noisy.shape[0])
-    degree[edge_index_partial[0]] += 1
+    degree = (graph_noisy >= 0).sum(dim=1)
 
-    RW_matrix = compute_random_walk_matrix(adjacency_matrix_partial, degree)
+    RW_matrix = compute_random_walk_matrix(graph_noisy >= 0, degree)
 
     # we retrieve the node features (the diagonal of the matrix)
-    nodes_features = RW_matrix.diagonal(axis1=0, axis2=1)
+    nodes_features = torch.diagonal(RW_matrix, dim1=0, dim2=1).T
+
+    # retrieve the edges features
+    edges_features = RW_matrix[edge_index_partial[0], edge_index_partial[1]]
+
+    # now we concat the node features witht the degree information
+    nodes_features = torch.cat((nodes_features, degree.unsqueeze(1)), dim=1)
+
+    # we concat the edge features with the edge_attr_partial
+    edge_attr_partial = torch.cat(
+        (edges_features, edge_attr_partial.unsqueeze(1)), dim=1
+    )
 
     data_partial = Data(
-        x=degree,
+        x=nodes_features,
         edge_index=edge_index_partial,
         edge_attr=edge_attr_partial,
     )

@@ -21,15 +21,25 @@ class GraphGDP(nn.Module):
     Torch class for computing the diffusion process
     """
 
-    def __init__(self, nb_layer, hidden_dim, nb_max_node):
+    def __init__(self, nb_layer, hidden_dim, nb_max_node, dim_node=1, dim_edge=1):
         super(GraphGDP, self).__init__()
 
         self.nb_layer = nb_layer
         self.hidden_dim = hidden_dim
         self.nb_max_node = nb_max_node
+        self.dim_node = dim_node
+        self.dim_edge = dim_edge
 
         # setup encoder for real node
-        self.encoder_edges = MLP(
+        self.encoder_edges_partial = MLP(
+            in_dim=dim_edge,
+            out_dim=hidden_dim,
+            hidden_dim=hidden_dim,
+            hidden_layers=2,
+        )
+
+        # setup encoder for real node
+        self.encoder_edges_full = MLP(
             in_dim=1,
             out_dim=hidden_dim,
             hidden_dim=hidden_dim,
@@ -39,6 +49,11 @@ class GraphGDP(nn.Module):
         # time encoding
         self.time_encoder = MLP(
             in_dim=1, out_dim=hidden_dim, hidden_dim=hidden_dim, hidden_layers=2
+        )
+
+        # time encoding
+        self.node_encoder = MLP(
+            in_dim=dim_node, out_dim=hidden_dim, hidden_dim=hidden_dim, hidden_layers=2
         )
 
         # setup graph layers (GATv2Conv)
@@ -84,7 +99,7 @@ class GraphGDP(nn.Module):
         nb_node_graph_2 = graph_2.x.shape[0]
 
         edge_attr_full = graph_1.edge_attr[:, 0].unsqueeze(1)
-        edge_attr_partial = graph_2.edge_attr.unsqueeze(1)
+        edge_attr_partial = graph_2.edge_attr
 
         # compute the subgraph_idx (batch_idx) for each graph
         subgraph_idx = graph_1.batch
@@ -94,16 +109,16 @@ class GraphGDP(nn.Module):
             t_value, 0, subgraph_idx.to(graph_1.x.device)).unsqueeze(1).to(graph_1.x.device)
 
         # encode the time
-        # print(t_array_nodes.shape)
         t_encoding = self.time_encoder(t_array_nodes)
+        node_encoding = self.node_encoder(graph_2.x)
 
-        graph_1.x = torch.concat((t_encoding, t_encoding), dim=1)
-        graph_2.x = torch.concat((t_encoding, t_encoding), dim=1)
+        graph_1.x = torch.concat((t_encoding, node_encoding), dim=1)
+        graph_2.x = torch.concat((t_encoding, node_encoding), dim=1)
 
         # edge encoding
-        edge_encoding_graph_1 = self.encoder_edges(edge_attr_full.float())
+        edge_encoding_graph_1 = self.encoder_edges_full(edge_attr_full.float())
         edge_encoding_graph_1_init = edge_encoding_graph_1.clone()
-        edge_encoding_graph_2 = self.encoder_edges(edge_attr_partial.float())
+        edge_encoding_graph_2 = self.encoder_edges_partial(edge_attr_partial.float())
 
         # compute the global representation of the graph
         for i in range(self.nb_layer):

@@ -17,6 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deepgraphgen.datasets_diffusion import (
     DatasetGrid,
+    NB_RANDOM_WALK,
 )
 
 from deepgraphgen.pl_trainer import TrainerGraphGDP
@@ -53,7 +54,7 @@ if __name__ == "__main__":
 
     # gpu or cpu (str)
     parser.add_argument(
-        "--device", type=str, default="gpu", help="Device to use for training"
+        "--device", type=str, default="cpu", help="Device to use for training"
     )
 
     # retrieve the arguments
@@ -77,7 +78,7 @@ if __name__ == "__main__":
     )
 
     print("Training on graphs")
-    model = TrainerGraphGDP(nb_layer=args.nb_layer, hidden_dim=args.hidden_dim, nb_max_node=100)
+    model = TrainerGraphGDP(nb_layer=args.nb_layer, hidden_dim=args.hidden_dim, nb_max_node=100, dim_node=NB_RANDOM_WALK+1, dim_edge=NB_RANDOM_WALK+1)
 
     # we need a custom tensboard logger
     logger = pl.loggers.TensorBoardLogger("logs/", name="diffusion_" + args.dataset_type)
