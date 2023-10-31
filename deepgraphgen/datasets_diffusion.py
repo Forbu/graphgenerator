@@ -10,6 +10,8 @@ from torch.utils.data import Dataset
 from torch_geometric.data import Data
 import torch_geometric.transforms as T
 
+DEVICE = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 from deepgraphgen.datageneration import generate_dataset
 from deepgraphgen.diffusion_generation import (
     add_noise_to_graph,
@@ -60,6 +62,8 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
     # we we create N random walk for each node
     # using the Adjacency matrix / degree
     RW = torch.tensor(adjacency_matrix_partial) / degree.unsqueeze(1)
+    RW.fill_diagonal_(0)
+    
     list_RW_matrix = []
 
     value = RW
@@ -72,6 +76,7 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
 
     # we concat all the matrix (W, W, NB_RANDOM_WALK)
     RW_matrix = torch.stack(list_RW_matrix, dim=2)
+    RW_matrix = RW_matrix
 
     return RW_matrix
 
@@ -83,8 +88,10 @@ def create_partial_graph(graph_noisy):
     edge_attr_partial = graph_noisy[edge_index_partial[0], edge_index_partial[1]]
 
     # first we compute the degree of each node in the graph
-    degree = torch.zeros(graph_noisy.shape[0])
     degree = (graph_noisy >= 0).sum(dim=1)
+    
+    # replace 0 by 1
+    degree[degree == 0.] = 1.
 
     RW_matrix = compute_random_walk_matrix(graph_noisy >= 0, degree)
 

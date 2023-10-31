@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     # gpu or cpu (str)
     parser.add_argument(
-        "--device", type=str, default="cpu", help="Device to use for training"
+        "--device", type=str, default="gpu", help="Device to use for training"
     )
 
     # retrieve the arguments
@@ -70,18 +70,27 @@ if __name__ == "__main__":
 
     # we create the dataloader
     training_dataloader = DataLoader(
-        training_dataset, batch_size=args.batch_size, shuffle=True
+        training_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4
     )
 
     validation_dataloader = DataLoader(
-        validation_dataset, batch_size=args.batch_size, shuffle=False
+        validation_dataset, batch_size=args.batch_size, shuffle=False, 
     )
 
+
     print("Training on graphs")
-    model = TrainerGraphGDP(nb_layer=args.nb_layer, hidden_dim=args.hidden_dim, nb_max_node=100, dim_node=NB_RANDOM_WALK+1, dim_edge=NB_RANDOM_WALK+1)
+    model = TrainerGraphGDP(
+        nb_layer=args.nb_layer,
+        hidden_dim=args.hidden_dim,
+        nb_max_node=100,
+        dim_node=NB_RANDOM_WALK + 1,
+        dim_edge=NB_RANDOM_WALK + 1,
+    )
 
     # we need a custom tensboard logger
-    logger = pl.loggers.TensorBoardLogger("logs/", name="diffusion_" + args.dataset_type)
+    logger = pl.loggers.TensorBoardLogger(
+        "logs/", name="diffusion_" + args.dataset_type
+    )
 
     # adding a checkpoint callback
     checkpoint_callback = pl.callbacks.ModelCheckpoint(
