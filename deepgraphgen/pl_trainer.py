@@ -207,7 +207,7 @@ class TrainerGraphGDP(pl.LightningModule):
         output = self.forward(graph_1, graph_2, t_value)
 
         def weighted_mse_loss(input, target, weight):
-            return torch.sum(weight * (input - target) ** 2)
+            return torch.mean(weight * (input - target) ** 2)
 
         weight_loss = self.compute_weight_loss(graph_1, t_value)
 
@@ -290,9 +290,17 @@ class TrainerGraphGDP(pl.LightningModule):
             img = img.transpose((2, 0, 1))
 
             # log the matrix (100x100) as an image
-            self.logger.experiment.add_image(
-                "generated_graph_{}".format(idx), img, self.current_epoch
-            )
+            if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
+                import wandb
+                self.logger.experiment.log({
+                    "generated_graph_{}".format(idx): wandb.Image(img) 
+                })
+            else:
+                # change format from HWC to CHW
+                img = img.transpose((2, 0, 1))
+                self.logger.experiment.add_image(
+                    "generated_graph_{}".format(idx), img, self.current_epoch
+                )
 
             # now we also want to transform the graph into a networkx graph to plot it
             adjacency_matrix = example_graph >= 0.5
@@ -317,9 +325,17 @@ class TrainerGraphGDP(pl.LightningModule):
             img = img.transpose((2, 0, 1))
 
             # log the matrix (100x100) as an image
-            self.logger.experiment.add_image(
-                "generated_graph_{}_networkx".format(idx), img, self.current_epoch
-            )
+            if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
+                import wandb
+                self.logger.experiment.log({
+                    "generated_graph_{}_networkx".format(idx): wandb.Image(img) 
+                })
+            else:
+                # change format from HWC to CHW
+                img = img.transpose((2, 0, 1))
+                self.logger.experiment.log({
+                    "generated_graph_{}_networkx".format(idx) : wandb.Image(img)}
+                )
 
         # we also log the mse value
         self.log("val_mse", self.val_mse.compute())
