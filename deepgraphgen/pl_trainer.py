@@ -286,9 +286,6 @@ class TrainerGraphGDP(pl.LightningModule):
 
             img = plt.imread(name_img)[:, :, :3]
 
-            # change format from HWC to CHW
-            img = img.transpose((2, 0, 1))
-
             # log the matrix (100x100) as an image
             if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
                 import wandb
@@ -320,9 +317,6 @@ class TrainerGraphGDP(pl.LightningModule):
             plt.clf()
 
             img = plt.imread(name_img)[:, :, :3]
-
-            # change format from HWC to CHW
-            img = img.transpose((2, 0, 1))
 
             # log the matrix (100x100) as an image
             if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
