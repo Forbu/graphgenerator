@@ -194,7 +194,9 @@ class TrainerGraphGDP(pl.LightningModule):
             .to(graph_1.x.device)
         )
 
-        return 1 / (0.1 + t_array_nodes)
+        index_timestep = torch.floor(t_array_nodes*1000).long()
+
+        return torch.tensor(self.variance_values).to(graph_1.x.device)[index_timestep]
 
     def compute_loss(self, batch, type="train"):
         """
@@ -215,7 +217,7 @@ class TrainerGraphGDP(pl.LightningModule):
         loss = weighted_mse_loss(
             output.squeeze().float(), graph_1.edge_attr[:, 1].float(), weight_loss
         )
-        # self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
+        # loss = self.loss_fn(output.squeeze().float(), graph_1.edge_attr[:, 1].float())
 
         # compute the MSE
         if type == "train":
@@ -271,7 +273,7 @@ class TrainerGraphGDP(pl.LightningModule):
 
         for idx, example_graph in enumerate(exemples_graphs):
             # create an png image
-            plt.imshow(example_graph, vmin=-1, vmax=1)
+            plt.imshow(example_graph, vmin=-2, vmax=2)
 
             # add colorbar
             plt.colorbar()
@@ -371,7 +373,7 @@ class TrainerGraphGDP(pl.LightningModule):
         data_partial = create_partial_graph(graph_noisy)
 
         data_full.batch = torch.zeros_like(data_full.x).long().to(device)
-        data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)
+        data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)[:, 0]
 
         delta_t = 0.001
 
@@ -424,7 +426,7 @@ class TrainerGraphGDP(pl.LightningModule):
             data_partial = create_partial_graph(graph_noisy)
 
             data_full.batch = torch.zeros_like(data_full.x).long().to(device)
-            data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)
+            data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)[:, 0]
 
             if idx in register_step:
                 images_register.append(graph_noisy.cpu().detach().numpy())
