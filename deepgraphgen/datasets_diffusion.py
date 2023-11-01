@@ -25,6 +25,7 @@ MAX_BETA = 10.0
 MIN_BETA = 0.1
 NB_RANDOM_WALK = 4
 THRESHOLD = 0.2
+MAX_DEGREE = 6.
 
 
 def create_full_graph(graph_noisy, gradiant, graph_init=None):
@@ -105,6 +106,9 @@ def create_partial_graph(graph_noisy):
 
     # retrieve the edges features
     edges_features = RW_matrix[edge_index_partial[0], edge_index_partial[1]]
+
+    # clamp de degree 
+    degree = degree.clamp(MAX_DEGREE) / MAX_DEGREE
 
     # now we concat the node features witht the degree information
     nodes_features = torch.cat((nodes_features, degree.unsqueeze(1)), dim=1)
