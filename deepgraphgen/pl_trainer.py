@@ -192,11 +192,16 @@ class TrainerGraphGDP(pl.LightningModule):
             torch.index_select(t_value, 0, subgraph_idx.to(graph_1.x.device))
             .unsqueeze(1)
             .to(graph_1.x.device)
-        )
+        ).detach()
 
-        index_timestep = torch.floor(t_array_nodes*1000).long()
+        t_array_edges = t_array_nodes[graph_1.edge_index[0]]
 
-        return torch.tensor(self.variance_values).to(graph_1.x.device)[index_timestep]
+        index_timestep = torch.floor(t_array_edges*1000).long()
+        index_timestep = torch.clamp(index_timestep, max=999).long()
+
+        tensor_variance = torch.tensor(self.variance_values)
+
+        return tensor_variance.to(graph_1.x.device)[index_timestep].squeeze()
 
     def compute_loss(self, batch, type="train"):
         """
@@ -211,7 +216,8 @@ class TrainerGraphGDP(pl.LightningModule):
         def weighted_mse_loss(input, target, weight):
             return torch.mean(weight * (input - target) ** 2)
 
-        weight_loss = self.compute_weight_loss(graph_1, t_value)
+        with torch.no_grad():
+            weight_loss = self.compute_weight_loss(graph_1, t_value)
 
         # now we compute the loss
         loss = weighted_mse_loss(
