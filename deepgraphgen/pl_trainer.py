@@ -329,8 +329,8 @@ class TrainerGraphGDP(pl.LightningModule):
             else:
                 # change format from HWC to CHW
                 img = img.transpose((2, 0, 1))
-                self.logger.experiment.log({
-                    "generated_graph_{}_networkx".format(idx) : wandb.Image(img)}
+                self.logger.experiment.add_image(
+                    "generated_graph_{}_networkx".format(idx), img, self.current_epoch
                 )
 
         # we also log the mse value

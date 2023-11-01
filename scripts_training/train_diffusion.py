@@ -31,7 +31,7 @@ if __name__ == "__main__":
 
     # hidden_dim (int)
     parser.add_argument(
-        "--hidden_dim", type=int, default=32, help="Hidden dimension of the model"
+        "--hidden_dim", type=int, default=16, help="Hidden dimension of the model"
     )
 
     # parser about the dataset type
@@ -41,7 +41,7 @@ if __name__ == "__main__":
 
     # parser about the dataset size
     parser.add_argument(
-        "--nb_graphs", type=int, default=2000, help="Number of graphs to generate"
+        "--nb_graphs", type=int, default=1000, help="Number of graphs to generate"
     )
 
     # batch size
@@ -54,7 +54,7 @@ if __name__ == "__main__":
 
     # gpu or cpu (str)
     parser.add_argument(
-        "--device", type=str, default="gpu", help="Device to use for training"
+        "--device", type=str, default="cpu", help="Device to use for training"
     )
 
     # retrieve the arguments
@@ -70,7 +70,7 @@ if __name__ == "__main__":
 
     # we create the dataloader
     training_dataloader = DataLoader(
-        training_dataset, batch_size=args.batch_size, shuffle=True, num_workers=4
+        training_dataset, batch_size=args.batch_size, shuffle=True
     )
 
     validation_dataloader = DataLoader(
