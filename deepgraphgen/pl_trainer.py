@@ -402,6 +402,9 @@ class TrainerGraphGDP(pl.LightningModule):
                 data_full.edge_index[0], data_full.edge_index[1]
             ] = output.squeeze()
 
+            s_matrix = torch.triu(s_matrix) + torch.triu(s_matrix).T 
+            s_matrix[range(nb_node), range(nb_node)] = s_matrix[range(nb_node), range(nb_node)]/2 
+
             beta_current = self.beta_values[999 - idx]
 
             symetric_noise = torch.randn_like(graph_noisy).to(device)
