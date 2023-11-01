@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from torch_geometric.data import Data
 
-from torch_geometric.nn import GATv2Conv
+from torch_geometric.nn import GATv2Conv, GraphNorm
 from torch_geometric.nn.pool import global_mean_pool
 
 from deepgraphgen.utils import MLP, init_weights, MPGNNConv
@@ -70,11 +70,18 @@ class GraphGDP(nn.Module):
             hidden_layers=2,
         )
 
+        # TODO : adding graphNorm
+        self.graph_norm_full = nn.ModuleList()
+        self.graph_norm_partial = nn.ModuleList()
+
         for _ in range(self.nb_layer):
             self.gnn_global.append(
                 GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
             self.gnn_filter.append(
                 GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
+
+            self.graph_norm_full.append(GraphNorm(hidden_dim))
+            self.graph_norm_partial.append(GraphNorm(hidden_dim))
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
@@ -112,8 +119,8 @@ class GraphGDP(nn.Module):
         t_encoding = self.time_encoder(t_array_nodes)
         node_encoding = self.node_encoder(graph_2.x)
 
-        graph_1.x = torch.concat((t_encoding, node_encoding), dim=1)
-        graph_2.x = torch.concat((t_encoding, node_encoding), dim=1)
+        node_features_g1 = torch.concat((t_encoding, node_encoding), dim=1)
+        node_features_g2 = torch.concat((t_encoding, node_encoding), dim=1)
 
         # edge encoding
         edge_encoding_graph_1 = self.encoder_edges_full(edge_attr_full.float())
@@ -125,19 +132,24 @@ class GraphGDP(nn.Module):
 
             output_graph_1 = (
                 self.gnn_global[i](
-                    graph_1.x, graph_1.edge_index, edge_encoding_graph_1)
+                    node_features_g1, graph_1.edge_index, edge_encoding_graph_1)
             )
+            output_graph_1 = self.graph_norm_full[i](
+                    output_graph_1, graph_1.batch.squeeze())
 
             output_graph_2 = (
                 self.gnn_filter[i](
-                    graph_2.x, graph_2.edge_index, edge_encoding_graph_2)
+                    node_features_g2, graph_2.edge_index, edge_encoding_graph_2)
             )
+
+            output_graph_2 = self.graph_norm_partial[i](
+                    output_graph_2, graph_2.batch.squeeze())
 
             # we update edge_encoding_graph_1 and edge_encoding_graph_2
             # with an MLP model
             edge_encoding_graph_1_aggregate = torch.cat(
-                (output_graph_1[graph_1.edge_index[0]],
-                 output_graph_1[graph_1.edge_index[1]],
+                (output_graph_2[graph_1.edge_index[0]],
+                 output_graph_2[graph_1.edge_index[1]],
                  edge_encoding_graph_1
                  ), dim=1
             )
@@ -145,8 +157,8 @@ class GraphGDP(nn.Module):
             edge_encoding_graph_1 = F.relu(self.mlp_interaction(
                 edge_encoding_graph_1_aggregate) + edge_encoding_graph_1)
 
-            graph_1.x = torch.concat((output_graph_1, output_graph_2), dim=1)
-            graph_2.x = torch.concat((output_graph_1, output_graph_2), dim=1)
+            node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1)
+            node_features_g2 = torch.concat((output_graph_1, output_graph_2), dim=1)
 
         # now we want to compute the updated edge score
         # we need to compute the score for each edge of the graph
