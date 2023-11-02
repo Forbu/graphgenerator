@@ -66,10 +66,10 @@ if __name__ == "__main__":
     if args.dataset_type == "grid":
         # basicly we load a training and a validation dataset
         print("Loading the dataset...")
-        training_dataset = DatasetGrid(args.nb_graphs, 10, 10)
+        training_dataset = DatasetGrid(args.nb_graphs, 5, 5)
 
         print("Loading the validation dataset...")
-        validation_dataset = DatasetGrid(100, 10, 10)
+        validation_dataset = DatasetGrid(100, 5, 5)
 
     # we create the dataloader
     training_dataloader = DataLoader(
@@ -86,7 +86,7 @@ if __name__ == "__main__":
     model = TrainerGraphGDP(
         nb_layer=args.nb_layer,
         hidden_dim=args.hidden_dim,
-        nb_max_node=100,
+        nb_max_node=25,
         dim_node=NB_RANDOM_WALK + 1,
         dim_edge=NB_RANDOM_WALK + 1,
     )

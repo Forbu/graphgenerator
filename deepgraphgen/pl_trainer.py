@@ -162,6 +162,8 @@ class TrainerGraphGDP(pl.LightningModule):
             dim_node=dim_node,
             dim_edge=dim_edge,
         )
+        
+        self.nb_max_node = nb_max_node
 
         # self.model = torch_geometric.compile(self.model, dynamic=True)
 
@@ -361,7 +363,7 @@ class TrainerGraphGDP(pl.LightningModule):
         # here we get the device
         device = self.device
 
-        nb_node = 100
+        nb_node = self.nb_max_node
 
         # first we initialize the adjacency matrix with gaussian noise
         # 0 mean and the last variance value
