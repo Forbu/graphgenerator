@@ -349,7 +349,7 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.Adam(self.parameters(), lr=0.00005)
+        return torch.optim.AdamW(self.parameters(), lr=0.0005)
 
     def generate(self):
         """

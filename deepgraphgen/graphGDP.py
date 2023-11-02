@@ -14,6 +14,7 @@ from torch_geometric.nn import GATv2Conv, GraphNorm
 from torch_geometric.nn.pool import global_mean_pool
 
 from deepgraphgen.utils import MLP, init_weights, MPGNNConv
+from deepgraphgen.datasets_diffusion import MAX_DEGREE, NB_RANDOM_WALK
 
 
 class GraphGDP(nn.Module):
@@ -53,7 +54,10 @@ class GraphGDP(nn.Module):
 
         # time encoding
         self.node_encoder = MLP(
-            in_dim=dim_node, out_dim=hidden_dim, hidden_dim=hidden_dim, hidden_layers=2
+            in_dim=dim_node - 1 + hidden_dim,
+            out_dim=hidden_dim,
+            hidden_dim=hidden_dim,
+            hidden_layers=2,
         )
 
         # setup graph layers (GATv2Conv)
@@ -63,12 +67,7 @@ class GraphGDP(nn.Module):
         self.gnn_filter = nn.ModuleList()
 
         # mlp interaction
-        self.mlp_interaction = MLP(
-            in_dim=hidden_dim * 3,
-            out_dim=hidden_dim,
-            hidden_dim=hidden_dim,
-            hidden_layers=2,
-        )
+        self.mlp_interactions = nn.ModuleList()
 
         # TODO : adding graphNorm
         self.graph_norm_full = nn.ModuleList()
@@ -76,17 +75,34 @@ class GraphGDP(nn.Module):
 
         for _ in range(self.nb_layer):
             self.gnn_global.append(
-                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
+                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+            )
             self.gnn_filter.append(
-                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim))
+                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+            )
 
             self.graph_norm_full.append(GraphNorm(hidden_dim))
             self.graph_norm_partial.append(GraphNorm(hidden_dim))
+
+            self.mlp_interactions.append(
+                MLP(
+                    in_dim=hidden_dim * 3,
+                    out_dim=hidden_dim,
+                    hidden_dim=hidden_dim,
+                    hidden_layers=2,
+                )
+            )
 
         # decoding layer for both generated nodes and edges
         self.decoding_layer_edge = MLP(
             in_dim=hidden_dim * 2, out_dim=1, hidden_dim=hidden_dim, hidden_layers=2
         )
+
+        # embedding for degree information
+        self.degree_embedding = nn.Embedding(int(MAX_DEGREE + 1), hidden_dim)
+
+        ## init nn.Embedding
+        self.degree_embedding.weight.data.uniform_(-1.0, 1.0)
 
         self.apply(init_weights)
 
@@ -112,12 +128,21 @@ class GraphGDP(nn.Module):
         subgraph_idx = graph_1.batch
 
         # create the time encoding
-        t_array_nodes = torch.index_select(
-            t_value, 0, subgraph_idx.to(graph_1.x.device)).unsqueeze(1).to(graph_1.x.device)
+        t_array_nodes = (
+            torch.index_select(t_value, 0, subgraph_idx.to(graph_1.x.device))
+            .unsqueeze(1)
+            .to(graph_1.x.device)
+        )
+
+        # compute embedding for degree information
+        degree_embedding = self.degree_embedding(graph_2.x[:, -1].long())
+
+        # node_information is the concatenation of the node features and the degree embedding
+        node_information = torch.cat((graph_2.x[:, :-1], degree_embedding), dim=1)
 
         # encode the time
         t_encoding = self.time_encoder(t_array_nodes)
-        node_encoding = self.node_encoder(graph_2.x)
+        node_encoding = self.node_encoder(node_information)
 
         node_features_g1 = torch.concat((t_encoding, node_encoding), dim=1)
         node_features_g2 = torch.concat((t_encoding, node_encoding), dim=1)
@@ -129,33 +154,36 @@ class GraphGDP(nn.Module):
 
         # compute the global representation of the graph
         for i in range(self.nb_layer):
-
-            output_graph_1 = (
-                self.gnn_global[i](
-                    node_features_g1, graph_1.edge_index, edge_encoding_graph_1)
+            output_graph_1 = self.gnn_global[i](
+                node_features_g1, graph_1.edge_index, edge_encoding_graph_1
             )
             output_graph_1 = self.graph_norm_full[i](
-                    output_graph_1, graph_1.batch.squeeze())
+                output_graph_1, graph_1.batch.squeeze()
+            )
 
-            output_graph_2 = (
-                self.gnn_filter[i](
-                    node_features_g2, graph_2.edge_index, edge_encoding_graph_2)
+            output_graph_2 = self.gnn_filter[i](
+                node_features_g2, graph_2.edge_index, edge_encoding_graph_2
             )
 
             output_graph_2 = self.graph_norm_partial[i](
-                    output_graph_2, graph_2.batch.squeeze())
+                output_graph_2, graph_2.batch.squeeze()
+            )
 
             # we update edge_encoding_graph_1 and edge_encoding_graph_2
             # with an MLP model
             edge_encoding_graph_1_aggregate = torch.cat(
-                (output_graph_2[graph_1.edge_index[0]],
-                 output_graph_2[graph_1.edge_index[1]],
-                 edge_encoding_graph_1
-                 ), dim=1
+                (
+                    output_graph_2[graph_1.edge_index[0]],
+                    output_graph_2[graph_1.edge_index[1]],
+                    edge_encoding_graph_1,
+                ),
+                dim=1,
             )
 
-            edge_encoding_graph_1 = F.relu(self.mlp_interaction(
-                edge_encoding_graph_1_aggregate) + edge_encoding_graph_1)
+            edge_encoding_graph_1 = F.relu(
+                self.mlp_interactions[i](edge_encoding_graph_1_aggregate)
+                + edge_encoding_graph_1
+            )
 
             node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1)
             node_features_g2 = torch.concat((output_graph_1, output_graph_2), dim=1)

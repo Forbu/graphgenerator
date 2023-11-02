@@ -8,6 +8,7 @@ import sys
 import argparse
 
 import lightning.pytorch as pl
+import torch
 
 # import dataloader from torch_geometric
 from torch_geometric.loader import DataLoader
@@ -21,6 +22,8 @@ from deepgraphgen.datasets_diffusion import (
 )
 
 from deepgraphgen.pl_trainer import TrainerGraphGDP
+
+torch.set_float32_matmul_precision("medium")
 
 
 if __name__ == "__main__":
@@ -54,7 +57,7 @@ if __name__ == "__main__":
 
     # gpu or cpu (str)
     parser.add_argument(
-        "--device", type=str, default="cpu", help="Device to use for training"
+        "--device", type=str, default="gpu", help="Device to use for training"
     )
 
     # retrieve the arguments
@@ -74,9 +77,10 @@ if __name__ == "__main__":
     )
 
     validation_dataloader = DataLoader(
-        validation_dataset, batch_size=args.batch_size, shuffle=False, 
+        validation_dataset,
+        batch_size=args.batch_size,
+        shuffle=False,
     )
-
 
     print("Training on graphs")
     model = TrainerGraphGDP(

@@ -23,9 +23,9 @@ undirected_transform = T.ToUndirected()
 
 MAX_BETA = 10.0
 MIN_BETA = 0.1
-NB_RANDOM_WALK = 4
+NB_RANDOM_WALK = 6
 THRESHOLD = 0.2
-MAX_DEGREE = 6.
+MAX_DEGREE = 8.0
 
 
 def create_full_graph(graph_noisy, gradiant, graph_init=None):
@@ -63,7 +63,11 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
     """
     # we we create N random walk for each node
     # using the Adjacency matrix / degree
-    RW = torch.tensor(adjacency_matrix_partial) / degree.unsqueeze(1)
+    degree[degree == 0.0] = 1.0
+    RW = torch.matmul(
+        torch.tensor(adjacency_matrix_partial).float(),
+        torch.diag(1.0 / degree.squeeze()).float(),
+    )
     RW.fill_diagonal_(0)
 
     list_RW_matrix = []
@@ -72,9 +76,8 @@ def compute_random_walk_matrix(adjacency_matrix_partial, degree):
 
     for _ in range(NB_RANDOM_WALK):
         # create the random walk matrix
-        value = torch.matmul(RW, value)
-
         list_RW_matrix.append(value)
+        value = torch.matmul(RW, value)
 
     # we concat all the matrix (W, W, NB_RANDOM_WALK)
     RW_matrix = torch.stack(list_RW_matrix, dim=2)
@@ -96,10 +99,7 @@ def create_partial_graph(graph_noisy):
     # first we compute the degree of each node in the graph
     degree = (graph_noisy >= 0).sum(dim=1)
 
-    # replace 0 by 1
-    degree[degree == 0.0] = 1.0
-
-    RW_matrix = compute_random_walk_matrix(graph_noisy >= 0, degree)
+    RW_matrix = compute_random_walk_matrix(graph_noisy >= 0, degree.clone())
 
     # we retrieve the node features (the diagonal of the matrix)
     nodes_features = torch.diagonal(RW_matrix, dim1=0, dim2=1).T
@@ -107,8 +107,8 @@ def create_partial_graph(graph_noisy):
     # retrieve the edges features
     edges_features = RW_matrix[edge_index_partial[0], edge_index_partial[1]]
 
-    # clamp de degree 
-    degree = degree.clamp(MAX_DEGREE) / MAX_DEGREE
+    # clamp de degree
+    degree = degree.clamp(max=MAX_DEGREE).float()
 
     # now we concat the node features witht the degree information
     nodes_features = torch.cat((nodes_features, degree.unsqueeze(1)), dim=1)
