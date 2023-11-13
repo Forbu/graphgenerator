@@ -10,7 +10,7 @@ import torch.nn.functional as F
 
 from torch_geometric.data import Data
 
-from torch_geometric.nn import GATv2Conv, GraphNorm
+from torch_geometric.nn import GATv2Conv, GraphNorm, TransformerConv
 from torch_geometric.nn.pool import global_mean_pool
 
 from deepgraphgen.utils import MLP, init_weights, MPGNNConv
@@ -75,10 +75,10 @@ class GraphGDP(nn.Module):
 
         for _ in range(self.nb_layer):
             self.gnn_global.append(
-                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+                TransformerConv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
             )
             self.gnn_filter.append(
-                GATv2Conv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+                TransformerConv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
             )
 
             self.graph_norm_full.append(GraphNorm(hidden_dim))
