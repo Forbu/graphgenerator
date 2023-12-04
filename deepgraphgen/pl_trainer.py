@@ -277,8 +277,6 @@ class TrainerGraphGDP(pl.LightningModule):
         with torch.no_grad():
             exemples_graphs = self.generate()
 
-        print("Generated graphs : ", exemples_graphs[0].shape)
-
         for idx, example_graph in enumerate(exemples_graphs):
             # create an png image
             plt.imshow(example_graph, vmin=-2, vmax=2)
@@ -351,7 +349,7 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.AdamW(self.parameters(), lr=0.0005)
+        return torch.optim.AdamW(self.parameters(), lr=0.005)
 
     def generate(self):
         """

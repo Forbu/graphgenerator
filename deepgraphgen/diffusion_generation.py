@@ -57,8 +57,7 @@ def transform_to_symetric(matrix):
     Returns:
         matrix_symetric (np.tensor): symetric matrix
     """
-    matrix_symetric = np.triu(matrix, k=0) + np.triu(matrix, k=0).T
-    matrix_symetric = matrix_symetric - np.diag(np.diag(matrix_symetric)) / 2
+    matrix_symetric = np.triu(matrix, k=0) + np.triu(matrix, k=1).T
 
     return matrix_symetric
 

@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # retrieve arguments
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--nb_layer", type=int, default=3, help="Number of GRAN layers")
+    parser.add_argument("--nb_layer", type=int, default=5, help="Number of layersin the gnn")
 
     # hidden_dim (int)
     parser.add_argument(
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     )
 
     # batch size
-    parser.add_argument("--batch_size", type=int, default=16, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
 
     # nb epoch training
     parser.add_argument(
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         logger=logger,
         accelerator=args.device,
         callbacks=[checkpoint_callback],
-        limit_train_batches=0.02,
+        limit_train_batches=0.1,
         limit_val_batches=0.05,
         gradient_clip_val=1.0,
         # gradiant accumulation
