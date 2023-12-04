@@ -13,7 +13,7 @@ from torch_geometric.data import Data
 from torch_geometric.nn import GATv2Conv, GraphNorm, TransformerConv
 from torch_geometric.nn.pool import global_mean_pool
 
-from deepgraphgen.utils import MLP, init_weights, MPGNNConv
+from deepgraphgen.utils import MLP, init_weights
 from deepgraphgen.datasets_diffusion import MAX_DEGREE, NB_RANDOM_WALK
 
 
