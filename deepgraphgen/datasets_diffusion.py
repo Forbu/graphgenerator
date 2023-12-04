@@ -23,7 +23,7 @@ undirected_transform = T.ToUndirected()
 
 MAX_BETA = 10.0
 MIN_BETA = 0.1
-NB_RANDOM_WALK = 6
+NB_RANDOM_WALK = 16
 THRESHOLD = 0.2
 MAX_DEGREE = 8.0
 

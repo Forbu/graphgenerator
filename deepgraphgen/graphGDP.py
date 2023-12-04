@@ -87,7 +87,7 @@ class GraphGDP(nn.Module):
 
             self.mlp_interactions.append(
                 MLP(
-                    in_dim=hidden_dim * 3,
+                    in_dim=hidden_dim,
                     out_dim=hidden_dim,
                     hidden_dim=hidden_dim,
                     hidden_layers=2,
@@ -152,6 +152,7 @@ class GraphGDP(nn.Module):
         edge_encoding_graph_1 = self.encoder_edges_full(edge_attr_full.float())
         edge_encoding_graph_1_init = edge_encoding_graph_1.clone()
         edge_encoding_graph_2 = self.encoder_edges_partial(edge_attr_partial.float())
+        edge_encoding_graph_2_init = edge_encoding_graph_2.clone()
 
         # compute the global representation of the graph
         for i in range(self.nb_layer):
@@ -171,7 +172,7 @@ class GraphGDP(nn.Module):
             )
 
             edge_encoding_graph_1 = self.gnn_global[i].out.squeeze()
-            edge_encoding_graph_2 = self.gnn_filter[i].out.squeeze()
+            edge_encoding_graph_2 = self.mlp_interactions[i](self.gnn_filter[i].out.squeeze()) + edge_encoding_graph_2_init
 
             node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1)
             node_features_g2 = torch.concat((output_graph_1, output_graph_2), dim=1)

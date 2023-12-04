@@ -30,7 +30,7 @@ if __name__ == "__main__":
     # retrieve arguments
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--nb_layer", type=int, default=5, help="Number of layersin the gnn")
+    parser.add_argument("--nb_layer", type=int, default=8, help="Number of layersin the gnn")
 
     # hidden_dim (int)
     parser.add_argument(
@@ -48,7 +48,7 @@ if __name__ == "__main__":
     )
 
     # batch size
-    parser.add_argument("--batch_size", type=int, default=32, help="Batch size")
+    parser.add_argument("--batch_size", type=int, default=64, help="Batch size")
 
     # nb epoch training
     parser.add_argument(
