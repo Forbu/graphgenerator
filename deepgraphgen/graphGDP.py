@@ -15,6 +15,7 @@ from torch_geometric.nn.pool import global_mean_pool
 
 from deepgraphgen.utils import MLP, init_weights
 from deepgraphgen.datasets_diffusion import MAX_DEGREE, NB_RANDOM_WALK
+from deepgraphgen.utils import TransformerConvEdge
 
 
 class GraphGDP(nn.Module):
@@ -75,10 +76,10 @@ class GraphGDP(nn.Module):
 
         for _ in range(self.nb_layer):
             self.gnn_global.append(
-                TransformerConv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+                TransformerConvEdge(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
             )
             self.gnn_filter.append(
-                TransformerConv(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
+                TransformerConvEdge(2 * hidden_dim, hidden_dim, edge_dim=hidden_dim)
             )
 
             self.graph_norm_full.append(GraphNorm(hidden_dim))
@@ -169,21 +170,8 @@ class GraphGDP(nn.Module):
                 output_graph_2, graph_2.batch.squeeze()
             )
 
-            # we update edge_encoding_graph_1 and edge_encoding_graph_2
-            # with an MLP model
-            edge_encoding_graph_1_aggregate = torch.cat(
-                (
-                    output_graph_2[graph_1.edge_index[0]],
-                    output_graph_2[graph_1.edge_index[1]],
-                    edge_encoding_graph_1,
-                ),
-                dim=1,
-            )
-
-            edge_encoding_graph_1 = F.relu(
-                self.mlp_interactions[i](edge_encoding_graph_1_aggregate)
-                + edge_encoding_graph_1
-            )
+            edge_encoding_graph_1 = self.gnn_global[i].out.squeeze()
+            edge_encoding_graph_2 = self.gnn_filter[i].out.squeeze()
 
             node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1)
             node_features_g2 = torch.concat((output_graph_1, output_graph_2), dim=1)

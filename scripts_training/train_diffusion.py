@@ -56,8 +56,14 @@ if __name__ == "__main__":
     )
 
     # gpu or cpu (str)
+    # check if gpu is available
+    if torch.cuda.is_available():
+        DEVICE = "gpu"
+    else:
+        DEVICE = "cpu"
+
     parser.add_argument(
-        "--device", type=str, default="gpu", help="Device to use for training"
+        "--device", type=str, default=DEVICE, help="Device to use for training"
     )
 
     # retrieve the arguments
