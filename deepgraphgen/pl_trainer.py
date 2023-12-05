@@ -411,16 +411,6 @@ class TrainerGraphGDP(pl.LightningModule):
             symetric_noise = transform_to_symetric(symetric_noise.cpu().numpy())
             symetric_noise = torch.from_numpy(symetric_noise).float().to(device)
 
-            if idx == 0:
-                print("added value")
-                print(beta_current * (0.5 * graph_noisy + s_matrix) * delta_t)
-                print("scond value")
-                print(
-                    torch.sqrt(torch.tensor(beta_current))
-                    * torch.sqrt(torch.tensor(delta_t))
-                    * torch.randn_like(graph_noisy)
-                )
-
             # now we can update the graph_noisy according to the equation
             graph_noisy = (
                 graph_noisy
