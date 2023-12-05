@@ -174,7 +174,19 @@ class GraphGDP(nn.Module):
             edge_encoding_graph_1 = self.gnn_global[i].out.squeeze()
             edge_encoding_graph_2 = self.mlp_interactions[i](self.gnn_filter[i].out.squeeze()) + edge_encoding_graph_2_init
 
-            node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1)
+            # we create a global feature per graph
+            graph_1_global = global_mean_pool(output_graph_1, graph_1.batch)
+            graph_2_global = global_mean_pool(output_graph_2, graph_2.batch)
+
+            # we concat the two global features
+            global_features = torch.concat((graph_1_global, graph_2_global), dim=1)
+
+            # now we want to go from size (nb_graph, hidden_dim) to (nb_node, hidden_dim)
+            global_features = global_features[graph_1.batch.squeeze()]
+
+            node_features_g1 = torch.concat((output_graph_1, output_graph_2), dim=1) + global_features
+            
+            # we concat the global features with the node features
             node_features_g2 = torch.concat((output_graph_1, output_graph_2), dim=1)
 
         # now we want to compute the updated edge score
