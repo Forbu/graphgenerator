@@ -68,7 +68,7 @@ Good result for the algorithm were harder to obtain, we only test it for grid li
 
 The generated graph look like this after training : 
 
-![image](https://github.com/Forbu/graphgenerator/assets/11457947/543401ea-8dea-4069-a28c-ae1eb0f588b9)
+![image](https://github.com/Forbu/graphgenerator/assets/11457947/f9bd330a-a5e6-4872-af22-5bfaf397f631)
 
 It feels that the model could (almost) generate a planar graph, but were far from grid like.
 
