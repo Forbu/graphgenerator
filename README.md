@@ -62,7 +62,7 @@ Networkx generation :
 ![image](https://github.com/Forbu/graphgenerator/assets/11457947/0774de4e-7814-4970-b5c2-7b1681cacc8d)
 
 
-#### GrappgGDP implementation
+#### GraphGDP implementation
 
 Good result for the algorithm were harder to obtain, we only test it for grid like generation.
 

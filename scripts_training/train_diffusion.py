@@ -26,11 +26,33 @@ from deepgraphgen.pl_trainer import TrainerGraphGDP
 torch.set_float32_matmul_precision("medium")
 
 
+def seed_everything(seed):
+    """
+    Function that sets the seed for the whole project
+    """
+    import numpy as np
+    import random
+
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+
+    # Set Numpy seed
+    np.random.seed(seed)
+
+    # Set Python random seed
+    random.seed(seed)
+
+    # Set Python env var
+    os.environ["PYTHONHASHSEED"] = str(seed)
+
+
 if __name__ == "__main__":
     # retrieve arguments
     parser = argparse.ArgumentParser()
 
-    parser.add_argument("--nb_layer", type=int, default=8, help="Number of layersin the gnn")
+    parser.add_argument(
+        "--nb_layer", type=int, default=8, help="Number of layersin the gnn"
+    )
 
     # hidden_dim (int)
     parser.add_argument(
@@ -117,7 +139,7 @@ if __name__ == "__main__":
         logger=logger,
         accelerator=args.device,
         callbacks=[checkpoint_callback],
-        limit_train_batches=1.,
+        limit_train_batches=1.0,
         limit_val_batches=0.05,
         gradient_clip_val=1.0,
         # gradiant accumulation
