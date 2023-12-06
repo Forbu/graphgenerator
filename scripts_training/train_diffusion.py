@@ -52,7 +52,7 @@ if __name__ == "__main__":
 
     # nb epoch training
     parser.add_argument(
-        "--nb_epoch", type=int, default=20, help="Number of epoch to train"
+        "--nb_epoch", type=int, default=40, help="Number of epoch to train"
     )
 
     # gpu or cpu (str)
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         logger=logger,
         accelerator=args.device,
         callbacks=[checkpoint_callback],
-        limit_train_batches=0.1,
+        limit_train_batches=1.,
         limit_val_batches=0.05,
         gradient_clip_val=1.0,
         # gradiant accumulation

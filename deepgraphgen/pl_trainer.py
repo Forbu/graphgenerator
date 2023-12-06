@@ -162,7 +162,7 @@ class TrainerGraphGDP(pl.LightningModule):
             dim_node=dim_node,
             dim_edge=dim_edge,
         )
-        
+
         self.nb_max_node = nb_max_node
 
         # self.model = torch_geometric.compile(self.model, dynamic=True)
@@ -198,7 +198,7 @@ class TrainerGraphGDP(pl.LightningModule):
 
         t_array_edges = t_array_nodes[graph_1.edge_index[0]]
 
-        index_timestep = torch.floor(t_array_edges*1000).long()
+        index_timestep = torch.floor(t_array_edges * 1000).long()
         index_timestep = torch.clamp(index_timestep, max=999).long()
 
         tensor_variance = torch.tensor(self.variance_values)
@@ -297,9 +297,10 @@ class TrainerGraphGDP(pl.LightningModule):
             # log the matrix (100x100) as an image
             if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
                 import wandb
-                self.logger.experiment.log({
-                    "generated_graph_{}".format(idx): wandb.Image(img) 
-                })
+
+                self.logger.experiment.log(
+                    {"generated_graph_{}".format(idx): wandb.Image(img)}
+                )
             else:
                 # change format from HWC to CHW
                 img = img.transpose((2, 0, 1))
@@ -329,9 +330,10 @@ class TrainerGraphGDP(pl.LightningModule):
             # log the matrix (100x100) as an image
             if isinstance(self.logger, pl.loggers.wandb.WandbLogger):
                 import wandb
-                self.logger.experiment.log({
-                    "generated_graph_{}_networkx".format(idx): wandb.Image(img) 
-                })
+
+                self.logger.experiment.log(
+                    {"generated_graph_{}_networkx".format(idx): wandb.Image(img)}
+                )
             else:
                 # change format from HWC to CHW
                 img = img.transpose((2, 0, 1))
@@ -349,7 +351,18 @@ class TrainerGraphGDP(pl.LightningModule):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.AdamW(self.parameters(), lr=0.005)
+        optimizer = torch.optim.Adam(self.parameters(), lr=0.001)
+
+        def lr_foo(batch_step):
+            # every 7000 steps we divide the learning rate by 2
+            nb_step = 7000
+            lr_scale = 0.8 ** (batch_step // nb_step)
+
+            return lr_scale
+
+        scheduler = torch.optim.lr_scheduler.LambdaLR(optimizer, lr_lambda=lr_foo)
+
+        return [optimizer], [{"scheduler": scheduler, "interval": "step"}]
 
     def generate(self):
         """
@@ -402,8 +415,10 @@ class TrainerGraphGDP(pl.LightningModule):
                 data_full.edge_index[0], data_full.edge_index[1]
             ] = output.squeeze()
 
-            s_matrix = torch.triu(s_matrix) + torch.triu(s_matrix).T 
-            s_matrix[range(nb_node), range(nb_node)] = s_matrix[range(nb_node), range(nb_node)]/2 
+            s_matrix = torch.triu(s_matrix) + torch.triu(s_matrix).T
+            s_matrix[range(nb_node), range(nb_node)] = (
+                s_matrix[range(nb_node), range(nb_node)] / 2
+            )
 
             beta_current = self.beta_values[999 - idx]
 
@@ -425,7 +440,9 @@ class TrainerGraphGDP(pl.LightningModule):
             data_partial = create_partial_graph(graph_noisy)
 
             data_full.batch = torch.zeros_like(data_full.x).long().to(device)
-            data_partial.batch = torch.zeros_like(data_partial.x).long().to(device)[:, 0]
+            data_partial.batch = (
+                torch.zeros_like(data_partial.x).long().to(device)[:, 0]
+            )
 
             if idx in register_step:
                 images_register.append(graph_noisy.cpu().detach().numpy())

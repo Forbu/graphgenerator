@@ -1,5 +1,5 @@
 #!/bin/bash -l
-# SBATCH --job-name "throughput_map_generation"
+# SBATCH --job-name "graphgeneration"
 
 
 # Set up the environment
