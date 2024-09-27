@@ -90,7 +90,8 @@ Typical adjacency matrix for grid graph (networkx) :
 
 The forward diffusion process also look good and the reverse too but the resulting topology doesn't look like a grid one ...
 
-
+> ⚠️
+> I did make some test changing the neural architecture using transformer based gnn : it really make the grid generation works
 
 
 
