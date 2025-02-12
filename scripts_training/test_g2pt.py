@@ -48,10 +48,10 @@ class DatasetGrid(Dataset):
         # select the graph
         graph = self.list_graphs[idx]
 
-        permutation = torch.randperm(self.n)
+        #permutation = torch.randperm(self.n)
 
         # random rebal relabel_nodes(G, mapping)
-        graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
+        #graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
 
         # now we need to get the nodes list (simple range from 0 to n)
         nodes = list(range(self.n))
@@ -90,7 +90,7 @@ if __name__ == "__main__":
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(100, 10, 10)
+    training_dataset = DatasetGrid(1000, 10, 10)
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 

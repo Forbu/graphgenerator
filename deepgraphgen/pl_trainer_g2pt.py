@@ -1,6 +1,7 @@
 """
 Helper class to train the model (with pytorch lightning)
 """
+
 import networkx as nx
 import matplotlib.pyplot as plt
 import numpy as np
@@ -15,7 +16,8 @@ import matplotlib.pyplot as plt
 # we create the model
 from x_transformers import Encoder
 
-torch.set_float32_matmul_precision('medium')
+torch.set_float32_matmul_precision("medium")
+
 
 class TrainerG2PT(pl.LightningModule):
     """
@@ -93,7 +95,9 @@ class TrainerG2PT(pl.LightningModule):
         nodes_embedding = self.nodes_embedding(nodes_embedding_range)
         edges_embedding_position = self.edges_embedding_position(edges_embedding_range)
 
-        edges_embedding = self.edges_embedding(batch["edges"]) + edges_embedding_position
+        edges_embedding = (
+            self.edges_embedding(batch["edges"]) + edges_embedding_position
+        )
         time_embedding = self.time_embedding(batch["time"])
 
         global_embedding = torch.cat([nodes_embedding, edges_embedding], dim=1)
@@ -162,10 +166,14 @@ class TrainerG2PT(pl.LightningModule):
 
         # compute the loss (cross entropy for the edges )
         loss_0 = torch.nn.functional.cross_entropy(
-            edges_logit_0.transpose(1, 2), edges_element[:, :, 0].long(), reduction="none"
+            edges_logit_0.transpose(1, 2),
+            edges_element[:, :, 0].long(),
+            reduction="none",
         )
         loss_1 = torch.nn.functional.cross_entropy(
-            edges_logit_1.transpose(1, 2), edges_element[:, :, 1].long(), reduction="none"
+            edges_logit_1.transpose(1, 2),
+            edges_element[:, :, 1].long(),
+            reduction="none",
         )
 
         loss_0 = (coef * loss_0).mean()
@@ -183,7 +191,10 @@ class TrainerG2PT(pl.LightningModule):
         """
         nodes_noise = torch.randn(batch_size, num_nodes, num_nodes, device=self.device)
         edges_noise = torch.randn(
-            batch_size, num_nodes * self.edges_to_node_ratio, 2 * (num_nodes + 1), device=self.device
+            batch_size,
+            num_nodes * self.edges_to_node_ratio,
+            2 * (num_nodes + 1),
+            device=self.device,
         )
 
         return nodes_noise, edges_noise
@@ -207,16 +218,14 @@ class TrainerG2PT(pl.LightningModule):
         self.eval()
         nodes_noise, edges_prior = self.noise_generation(batch_size, num_nodes)
 
-        nb_step = 100
+        nb_step = 256
 
         time_step = torch.linspace(0, 1, nb_step, device=self.device)
         time_step = (
             time_step.unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1, 1)
         )
 
-        for i in range(nb_step - 1):
-            t = time_step[:, :, :, i]
-
+        def compute_speed(edges_prior, t):
             batch = {
                 "edges": edges_prior,
                 "time": t,
@@ -238,8 +247,38 @@ class TrainerG2PT(pl.LightningModule):
                 * (edges_proba_prior_1 - edges_prior[:, :, (num_nodes + 1) :])
             )
 
-            edges_proba_prior_0 += speed_0 * 1.0 / nb_step
-            edges_proba_prior_1 += speed_1 * 1.0 / nb_step
+            return speed_0, speed_1
+
+        for i in range(nb_step - 1):
+            t = time_step[:, :, :, i]
+
+            speed_0, speed_1 = compute_speed(edges_prior, t)
+
+            edges_proba_prior_0_half = (
+                speed_0 * 1.0 / nb_step / 2.0 + edges_prior[:, :, : (num_nodes + 1)]
+            )
+            edges_proba_prior_1_half = (
+                speed_1 * 1.0 / nb_step / 2.0 + edges_prior[:, :, (num_nodes + 1) :]
+            )
+
+            edges_prior_half = torch.cat(
+                [
+                    edges_proba_prior_0_half,
+                    edges_proba_prior_1_half,
+                ],
+                dim=-1,
+            )
+
+            speed_0, speed_1 = compute_speed(edges_prior_half, t + 1.0 / nb_step / 2.0)
+
+            edges_proba_prior_0 = (
+                speed_0 * 1.0 / nb_step 
+                + edges_prior[:, :, : (num_nodes + 1)]
+            )
+            edges_proba_prior_1 = (
+                speed_1 * 1.0 / nb_step
+                + edges_prior[:, :, (num_nodes + 1) :]
+            )
 
             edges_prior = torch.cat(
                 [
@@ -249,8 +288,12 @@ class TrainerG2PT(pl.LightningModule):
                 dim=-1,
             )
 
-        indice_edges_prior_0 = torch.argmax(edges_prior[:, :, :(num_nodes + 1)], dim=-1)
-        indice_edges_prior_1 = torch.argmax(edges_prior[:, :, (num_nodes + 1) :], dim=-1)
+        indice_edges_prior_0 = torch.argmax(
+            edges_prior[:, :, : (num_nodes + 1)], dim=-1
+        )
+        indice_edges_prior_1 = torch.argmax(
+            edges_prior[:, :, (num_nodes + 1) :], dim=-1
+        )
 
         # nowe we can build the graph in networkx and draw it with matplotlib
         for i in range(batch_size):
@@ -262,7 +305,10 @@ class TrainerG2PT(pl.LightningModule):
                     indice_edges_prior_0[i, j] != num_nodes
                     and indice_edges_prior_1[i, j] != num_nodes
                 ):
-                    G.add_edge(indice_edges_prior_0[i, j].item(), indice_edges_prior_1[i, j].item())
+                    G.add_edge(
+                        indice_edges_prior_0[i, j].item(),
+                        indice_edges_prior_1[i, j].item(),
+                    )
             plt.figure(figsize=(10, 10))
             nx.draw(G, with_labels=True)
             plt.savefig(f"graph_visu/graph_{i}.png")
