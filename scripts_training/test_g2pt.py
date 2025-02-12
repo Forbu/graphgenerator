@@ -39,7 +39,7 @@ class DatasetGrid(Dataset):
         self.n = nx * ny
         self.edges_to_nodes_ratio = edges_to_nodes_ratio
 
-        self.list_graphs = generate_dataset("grid_graph", nb_graphs, nx=nx, ny=ny)
+        self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
 
     def __len__(self):
         return self.nb_graphs
