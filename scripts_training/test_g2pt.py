@@ -4,6 +4,8 @@ Module to test the model issue for the training
 
 import os
 import sys
+import networkx as nx
+
 
 import torch
 
@@ -12,11 +14,15 @@ import lightning.pytorch as pl
 # import dataloader from torch_geometric
 from torch.utils.data import DataLoader, Dataset
 
+# import tensorboardlogger from pl
+from lightning.pytorch.loggers import TensorBoardLogger
+
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from deepgraphgen.pl_trainer_g2pt import TrainerG2PT
 from deepgraphgen.datageneration import generate_dataset
+
 
 class DatasetGrid(Dataset):
     """
@@ -32,23 +38,41 @@ class DatasetGrid(Dataset):
 
         self.list_graphs = generate_dataset("grid_graph", nb_graphs, nx=nx, ny=ny)
 
+    def __len__(self):
+        return self.nb_graphs
 
     def __getitem__(self, idx):
         # select the graph
         graph = self.list_graphs[idx]
 
+        permutation = torch.randperm(self.n)
+
+        # random rebal relabel_nodes(G, mapping)
+        graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
+
         # now we need to get the nodes list (simple range from 0 to n)
         nodes = list(range(self.n))
 
         # now we need to get the edges list
-        edges = [(u, v) for u in nodes for v in nodes if graph[u][v]]
+        edges_list = list(graph.edges)
 
+        # preprocessing
+        edges_list = [(i, j) for i, j in edges_list]
+        edges = torch.tensor(edges_list)
         # convert to tensor
         nodes = torch.tensor(nodes)
-        edges = torch.tensor(edges)
-        
+
         # now pad the edges to be of size n*edges_to_nodes_ratio
-        edges = torch.nn.functional.pad(edges, (0, self.edges_to_nodes_ratio - 1), value=self.n)
+        edges = torch.cat(
+            [
+                edges,
+                torch.ones(
+                    (self.n * self.edges_to_nodes_ratio - edges.shape[0], 2),
+                    dtype=torch.long,
+                )
+                * self.n,
+            ]
+        )
 
         return {
             "nodes": nodes,
@@ -57,22 +81,22 @@ class DatasetGrid(Dataset):
 
 
 if __name__ == "__main__":
-
     # load the checkpoint
-    model = TrainerG2PT
+    model = TrainerG2PT()
 
     # we chech the generation of the graph
-    #out = model.generate()
+    # out = model.generate()
 
     training_dataset = DatasetGrid(100, 10, 10)
     # we create the dataloader
-    training_dataloader = DataLoader(
-        training_dataset, batch_size=2, shuffle=True
+    training_dataloader = DataLoader(training_dataset, batch_size=2, shuffle=True)
+
+    # setup trainer
+    trainer = pl.Trainer(
+        max_time={"hours": 1},
+        logger=TensorBoardLogger("tb_logs/", name="g2pt_grid"),
     )
 
-    for batch in training_dataloader:
-        print(batch)
-        break
-
-
-
+    # train the model
+    # trainer.fit(model, training_dataloader)
+    model.generation_global(batch_size=4, num_nodes=100)
