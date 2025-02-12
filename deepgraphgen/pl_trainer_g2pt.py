@@ -15,6 +15,7 @@ import matplotlib.pyplot as plt
 # we create the model
 from x_transformers import Encoder
 
+torch.set_float32_matmul_precision('medium')
 
 class TrainerG2PT(pl.LightningModule):
     """
@@ -133,7 +134,7 @@ class TrainerG2PT(pl.LightningModule):
         )
 
         # generate the random noise
-        t = torch.rand(batch_size, 1, 1)
+        t = torch.rand((batch_size, 1, 1), device=self.device)
 
         # generate the interpolation
         nodes_interpolation = t * nodes_element + (1 - t) * nodes_noise
@@ -162,9 +163,9 @@ class TrainerG2PT(pl.LightningModule):
         """
         creating pur noise
         """
-        nodes_noise = torch.randn(batch_size, num_nodes, num_nodes)
+        nodes_noise = torch.randn(batch_size, num_nodes, num_nodes, device=self.device)
         edges_noise = torch.randn(
-            batch_size, num_nodes * self.edges_to_node_ratio, 2 * (num_nodes + 1)
+            batch_size, num_nodes * self.edges_to_node_ratio, 2 * (num_nodes + 1), device=self.device
         )
 
         return nodes_noise, edges_noise
@@ -174,11 +175,11 @@ class TrainerG2PT(pl.LightningModule):
         """
         on the end on epoch
         """
-        if self.epoch % 10 == 0:
+        if self.epoch_current % 50 == 0:
             with torch.no_grad():
                 self.generation_global(2, 100)
 
-        self.epoch += 1
+        self.epoch_current += 1
 
     def generation_global(self, batch_size, num_nodes):
         """
@@ -190,7 +191,7 @@ class TrainerG2PT(pl.LightningModule):
 
         nb_step = 100
 
-        time_step = torch.linspace(0, 1, nb_step)
+        time_step = torch.linspace(0, 1, nb_step, device=self.device)
         time_step = (
             time_step.unsqueeze(0).unsqueeze(0).unsqueeze(0).repeat(batch_size, 1, 1, 1)
         )
@@ -230,8 +231,8 @@ class TrainerG2PT(pl.LightningModule):
                 dim=-1,
             )
 
-        indice_edges_prior_0 = torch.argmax(edges_prior[:, :, :, 0], dim=-1)
-        indice_edges_prior_1 = torch.argmax(edges_prior[:, :, :, 1], dim=-1)
+        indice_edges_prior_0 = torch.argmax(edges_prior[:, :, :(num_nodes + 1)], dim=-1)
+        indice_edges_prior_1 = torch.argmax(edges_prior[:, :, (num_nodes + 1) :], dim=-1)
 
         # nowe we can build the graph in networkx and draw it with matplotlib
         for i in range(batch_size):

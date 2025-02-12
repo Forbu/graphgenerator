@@ -17,6 +17,9 @@ from torch.utils.data import DataLoader, Dataset
 # import tensorboardlogger from pl
 from lightning.pytorch.loggers import TensorBoardLogger
 
+# wandb logger
+from lightning.pytorch.loggers import WandbLogger
+
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -89,14 +92,18 @@ if __name__ == "__main__":
 
     training_dataset = DatasetGrid(100, 10, 10)
     # we create the dataloader
-    training_dataloader = DataLoader(training_dataset, batch_size=2, shuffle=True)
+    training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
+
+    logger = TensorBoardLogger("tb_logs/", name="g2pt_grid")
+    logger = WandbLogger(project="g2pt_grid")
 
     # setup trainer
     trainer = pl.Trainer(
         max_time={"hours": 1},
-        logger=TensorBoardLogger("tb_logs/", name="g2pt_grid"),
+        logger=logger,
+        accumulate_grad_batches=4,
     )
 
     # train the model
-    # trainer.fit(model, training_dataloader)
-    model.generation_global(batch_size=4, num_nodes=100)
+    trainer.fit(model, training_dataloader)
+    # model.generation_global(batch_size=4, num_nodes=100)
