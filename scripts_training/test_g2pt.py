@@ -39,7 +39,8 @@ class DatasetGrid(Dataset):
         self.n = nx * ny
         self.edges_to_nodes_ratio = edges_to_nodes_ratio
 
-        self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
+        #self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
+        self.list_graphs = generate_dataset("random_labeled_tree", nb_graphs, n=nx * ny)
 
     def __len__(self):
         return self.nb_graphs
@@ -90,7 +91,7 @@ if __name__ == "__main__":
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(1000, 10, 10)
+    training_dataset = DatasetGrid(10000, 10, 10)
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 

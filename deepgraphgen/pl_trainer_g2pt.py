@@ -204,7 +204,7 @@ class TrainerG2PT(pl.LightningModule):
         """
         on the end on epoch
         """
-        if self.epoch_current % 10 == 0:
+        if self.epoch_current % 1 == 0:
             with torch.no_grad():
                 self.generation_global(2, 100)
 

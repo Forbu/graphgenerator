@@ -94,7 +94,7 @@ The forward diffusion process also look good and the reverse too but the resulti
 > I did make some test changing the neural architecture using transformer based gnn : it really make the grid generation works
 
 
-
+Indeep when I adapt a transformer based architecture (https://arxiv.org/pdf/2501.01073) things start to work.
 
 
 

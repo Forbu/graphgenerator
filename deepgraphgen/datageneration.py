@@ -17,6 +17,7 @@ from networkx import (
     bfs_edges,
     relabel_nodes,
     convert_node_labels_to_integers,
+    random_labeled_tree,
 )
 
 
@@ -41,6 +42,8 @@ def generated_graph(
     elif graph_name == "grid_graph":
         assert nx != None and ny != None, "define nx and ny"
         return grid_graph(dim=[nx, ny])
+    elif graph_name == "random_labeled_tree":
+        return random_labeled_tree(n)
 
 
 def bfs_order(graph):
