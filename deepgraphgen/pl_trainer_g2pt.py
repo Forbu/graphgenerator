@@ -53,6 +53,10 @@ class TrainerG2PT(pl.LightningModule):
             torch.nn.Linear(hidden_dim, hidden_dim),
         )
 
+        self.edges_embedding_position = torch.nn.Embedding(
+            nb_max_node * self.edges_to_node_ratio, hidden_dim
+        )
+
         # linear layer for the time
         self.time_embedding = torch.nn.Sequential(
             torch.nn.Linear(1, hidden_dim),
@@ -79,9 +83,17 @@ class TrainerG2PT(pl.LightningModule):
             nodes_embedding_range.unsqueeze(0).repeat(batch_size, 1).long()
         )
 
-        nodes_embedding = self.nodes_embedding(nodes_embedding_range)
+        edges_embedding_range = torch.arange(
+            nb_max_node * self.edges_to_node_ratio, device=self.device
+        )
+        edges_embedding_range = (
+            edges_embedding_range.unsqueeze(0).repeat(batch_size, 1).long()
+        )
 
-        edges_embedding = self.edges_embedding(batch["edges"])
+        nodes_embedding = self.nodes_embedding(nodes_embedding_range)
+        edges_embedding_position = self.edges_embedding_position(edges_embedding_range)
+
+        edges_embedding = self.edges_embedding(batch["edges"]) + edges_embedding_position
         time_embedding = self.time_embedding(batch["time"])
 
         global_embedding = torch.cat([nodes_embedding, edges_embedding], dim=1)
@@ -145,13 +157,19 @@ class TrainerG2PT(pl.LightningModule):
         # apply the model
         nodes_logit, edges_logit_0, edges_logit_1 = self(batch)
 
+        coef = t / (1.0 - t)
+        coef = coef.clamp(min=0.005, max=1.5)
+
         # compute the loss (cross entropy for the edges )
         loss_0 = torch.nn.functional.cross_entropy(
-            edges_logit_0.transpose(1, 2), edges_element[:, :, 0].long()
+            edges_logit_0.transpose(1, 2), edges_element[:, :, 0].long(), reduction="none"
         )
         loss_1 = torch.nn.functional.cross_entropy(
-            edges_logit_1.transpose(1, 2), edges_element[:, :, 1].long()
+            edges_logit_1.transpose(1, 2), edges_element[:, :, 1].long(), reduction="none"
         )
+
+        loss_0 = (coef * loss_0).mean()
+        loss_1 = (coef * loss_1).mean()
 
         loss = loss_0 + loss_1
 
@@ -244,7 +262,7 @@ class TrainerG2PT(pl.LightningModule):
                     indice_edges_prior_0[i, j] != num_nodes
                     and indice_edges_prior_1[i, j] != num_nodes
                 ):
-                    G.add_edge(indice_edges_prior_0[i, j], indice_edges_prior_1[i, j])
+                    G.add_edge(indice_edges_prior_0[i, j].item(), indice_edges_prior_1[i, j].item())
             plt.figure(figsize=(10, 10))
             nx.draw(G, with_labels=True)
             plt.savefig(f"graph_visu/graph_{i}.png")
