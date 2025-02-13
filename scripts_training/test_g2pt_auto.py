@@ -23,7 +23,7 @@ from lightning.pytorch.loggers import WandbLogger
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from deepgraphgen.pl_trainer_g2pt import TrainerG2PT
+from deepgraphgen.pl_trainer_g2pt_auto import TrainerG2PT
 from deepgraphgen.datageneration import generate_dataset
 
 
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(100000, 10, 10)
+    training_dataset = DatasetGrid(10000, 10, 10)
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 

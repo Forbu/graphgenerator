@@ -9,10 +9,7 @@ import networkx as nx
 
 import matplotlib.pyplot as plt
 
-import lightning.pytorch as pl
 
-# import dataloader from torch_geometric
-from torch_geometric.loader import DataLoader
 
 # import the deepgraphgen modules that are just above
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,7 +17,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from deepgraphgen.datageneration import (
     generate_dataset
 )
-from deepgraphgen.pl_trainer import TrainerGRAN
+
 
 
 if __name__ == "__main__":
@@ -93,3 +90,21 @@ if __name__ == "__main__":
 
 
     
+    # generate the dataset for erdos
+    dataset_tree = generate_dataset(
+        graph_name="random_labeled_tree",
+        nb_graphs=1,
+        n=100,
+    )
+
+    # plot the graph
+    graph = dataset_tree[0]
+    
+    # draw 
+    nx.draw(graph, with_labels=True)
+
+    # save the graph
+    plt.savefig("random_labeled_tree.png")
+
+    # clean the plot
+    plt.clf()

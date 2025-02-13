@@ -96,6 +96,7 @@ The forward diffusion process also look good and the reverse too but the resulti
 
 Indeep when I adapt a transformer based architecture (https://arxiv.org/pdf/2501.01073) things start to work.
 
+Tree and grid generation began to look like tree and grid ...
 
 
 
