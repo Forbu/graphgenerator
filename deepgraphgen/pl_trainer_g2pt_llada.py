@@ -43,6 +43,14 @@ class TrainerG2PT(pl.LightningModule):
         # transformer core
         self.model_core = Encoder(dim=hidden_dim, depth=nb_layer, heads=8)
 
+        # position embedding
+        self.position_embedding = torch.nn.Embedding(
+            nb_max_node + edges_to_node_ratio * 2 * nb_max_node, hidden_dim
+        )
+
+        # nodes embedding
+        self.nodes_embedding = torch.nn.Embedding(nb_max_node + 3, hidden_dim)
+
         self.epoch_current = 0
 
     def forward(self, batch):
@@ -75,9 +83,15 @@ class TrainerG2PT(pl.LightningModule):
         cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
         global_embedding = global_embedding[:, : (cutting_shape + 2)]
 
+        # position integer 0 -> (cutting_shape + 2)
+        position_integer = torch.arange(cutting_shape + 2, device=self.device)
+
         edges_int = edges_int[:, : (cutting_shape - self.nb_max_node + 2)]
 
-        # TODO apply embedding AND THEN apply core
+        # apply embedding and position embedding AND THEN apply core
+        global_embedding = self.nodes_embedding(
+            global_embedding
+        ) + self.position_embedding(position_integer)
 
         # apply the transformer core
         output_global = self.model_core(global_embedding)
@@ -99,7 +113,7 @@ class TrainerG2PT(pl.LightningModule):
 
         batch_size = batch["edges"].shape[0]
 
-        # now we want to preprocess edges_element to be 
+        # now we want to preprocess edges_element to be
         # (batch_size, num_nodes*self.edges_to_node_ratio* 2)
         # interleave the edges so edges_element_new[:, ::2] = edges_element[:, :, 0]
         # and edges_element_new[:, 1::2] = edges_element[:, :, 1]
@@ -133,8 +147,12 @@ class TrainerG2PT(pl.LightningModule):
         batch["time_stamp"] = time_stamp
 
         # randomly mask some tokens with a probability of t
-        masking = torch.multinomial(time_stamp, num_samples=edges_elements.shape, replacement=True)
-        batch["noisy_edges"] = masking * edges_elements + (1 - masking) * (self.nb_max_node + 2)
+        masking = torch.multinomial(
+            time_stamp, num_samples=edges_elements.shape, replacement=True
+        )
+        batch["noisy_edges"] = masking * edges_elements + (1 - masking) * (
+            self.nb_max_node + 2
+        )
         batch["edges"] = edges_elements
 
         return batch
@@ -157,20 +175,11 @@ class TrainerG2PT(pl.LightningModule):
 
         self.eval()
 
-        # we init the nodes and then we auto regressively generate
-        nodes_embedding_range = torch.arange(self.nb_max_node, device=self.device)
-
-        # we append one token (nb_max_node + 1) at the beggining
-        global_embedding = torch.cat(
-            [
-                nodes_embedding_range.unsqueeze(0).repeat(batch_size, 1).long(),
-                torch.ones((batch_size, 1), device=self.device).long()
-                * (self.nb_max_node + 1),
-            ],
-            dim=1,
-        )
-
-        # todo output = self.model.generate(global_embedding, 300)
+        # 1. we mask everything first
+        # 2. for loop to detokenize and generate the graph
+        #    start 1. greedy decoding
+        #    start 2. like topk setup (akka autoregressive)
+        # 3. plot the graph
 
         self.plot_graph(output, self.nb_max_node)
 

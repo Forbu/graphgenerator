@@ -106,7 +106,8 @@ class TrainerG2PT(pl.LightningModule):
         ]  # is (batch_size, num_nodes*self.edges_to_node_ratio, 2)
 
         # now we want to preprocess edges_element to be ( batch_size, num_nodes*self.edges_to_node_ratio* 2)
-        # interleave the edges so edges_element_new[:, ::2] = edges_element[:, :, 0] and edges_element_new[:, 1::2] = edges_element[:, :, 1]
+        # interleave the edges so edges_element_new[:, ::2] = edges_element[:, :, 0] 
+        # and edges_element_new[:, 1::2] = edges_element[:, :, 1]
         edges_element = edges_element.reshape(
             edges_element.shape[0], edges_element.shape[1] * 2, 1
         ).squeeze(2)
