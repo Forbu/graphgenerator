@@ -45,7 +45,7 @@ class TrainerG2PT(pl.LightningModule):
 
         # position embedding
         self.position_embedding = torch.nn.Embedding(
-            nb_max_node + edges_to_node_ratio * 2 * nb_max_node, hidden_dim
+            nb_max_node + edges_to_node_ratio * 2 * nb_max_node + 2, hidden_dim
         )
 
         # nodes embedding
@@ -84,7 +84,9 @@ class TrainerG2PT(pl.LightningModule):
         global_embedding = global_embedding[:, : (cutting_shape + 2)]
 
         # position integer 0 -> (cutting_shape + 2)
-        position_integer = torch.arange(cutting_shape + 2, device=self.device)
+        position_integer = torch.arange(
+            global_embedding.shape[1], device=self.device
+        ).unsqueeze(0)
 
         edges_int = edges_int[:, : (cutting_shape - self.nb_max_node + 2)]
 
@@ -147,10 +149,14 @@ class TrainerG2PT(pl.LightningModule):
         batch["time_stamp"] = time_stamp
 
         # randomly mask some tokens with a probability of t
-        masking = torch.multinomial(
-            time_stamp, num_samples=edges_elements.shape, replacement=True
+        proba_compute = torch.cat(
+            [time_stamp.unsqueeze(1), 1 - time_stamp.unsqueeze(1)], dim=1
         )
-        batch["noisy_edges"] = masking * edges_elements + (1 - masking) * (
+        masking = torch.multinomial(
+            proba_compute, num_samples=edges_elements.shape[1], replacement=True
+        )
+
+        batch["noisy_edges"] = (1 - masking) * edges_elements + masking * (
             self.nb_max_node + 2
         )
 
