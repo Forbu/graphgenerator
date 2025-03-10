@@ -138,12 +138,12 @@ class TrainerG2PT(pl.LightningModule):
 
         return loss
 
-    def token_masking(self, edges_elements, batch_size):
+    def token_masking(self, edges_elements, batch_size, time_stamp=None):
         # in order to do some discrete diffusion we should do some noise generation
-        time_stamp = torch.rand((batch_size), device=self.device)
+        if time_stamp is None:
+            time_stamp = torch.rand((batch_size), device=self.device)
 
         batch = {}
-
         batch["time_stamp"] = time_stamp
 
         # randomly mask some tokens with a probability of t
@@ -153,6 +153,7 @@ class TrainerG2PT(pl.LightningModule):
         batch["noisy_edges"] = masking * edges_elements + (1 - masking) * (
             self.nb_max_node + 2
         )
+
         batch["edges"] = edges_elements
 
         return batch
@@ -164,11 +165,11 @@ class TrainerG2PT(pl.LightningModule):
         """
         if self.epoch_current % 10 == 0:
             with torch.no_grad():
-                self.generation_global(2)
+                self.generation_global(2, 100)
 
         self.epoch_current += 1
 
-    def generation_global(self, batch_size):
+    def generation_global(self, batch_size, nb_step):
         """
         creating pur noise
         """
@@ -176,10 +177,40 @@ class TrainerG2PT(pl.LightningModule):
         self.eval()
 
         # 1. we mask everything first
+        time_stamp = torch.zeros((batch_size), device=self.device)  # full masking
+        edges_element = torch.ones(
+            (batch_size, self.nb_max_node * self.edges_to_node_ratio, 2),
+            device=self.device,
+        )
+
+        batch = self.token_masking(edges_element, batch_size, time_stamp)
+
+        delta_choose = int(1 // nb_step * self.nb_max_node * self.edges_to_node_ratio)
+
         # 2. for loop to detokenize and generate the graph
-        #    start 1. greedy decoding
-        #    start 2. like topk setup (akka autoregressive)
-        # 3. plot the graph
+        for i in range(nb_step):
+            # get logits prediction
+            edges_append, edges_logit = self(batch)
+
+            # greedy sampling (take the N highest probability)
+            max_proba_index = torch.argmax(
+                edges_logit, dim=2
+            )  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
+
+            max_logit = torch.max(edges_logit, dim=2)[
+                0
+            ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
+
+            # now we want to retrieve the topk values
+            _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
+
+            new_noisy_value = batch["noisy_edges"].clone()
+            new_noisy_value[indices] = max_proba_index[indices]
+
+            # replace the noisy value with the new value
+            batch["noisy_edges"] = new_noisy_value
+
+        output = batch["noisy_edges"].long()
 
         self.plot_graph(output, self.nb_max_node)
 
