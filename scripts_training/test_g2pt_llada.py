@@ -103,7 +103,8 @@ if __name__ == "__main__":
         max_time={"hours": 3},
         logger=logger,
         accumulate_grad_batches=4,
-        #fast_dev_run=True,
+        # fast_dev_run=True,
+        # accelerator="cpu", # debug
     )
 
     # train the model

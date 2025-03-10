@@ -51,6 +51,9 @@ class TrainerG2PT(pl.LightningModule):
         # nodes embedding
         self.nodes_embedding = torch.nn.Embedding(nb_max_node + 3, hidden_dim)
 
+        # projection toward the output
+        self.head = torch.nn.Linear(hidden_dim, self.nb_max_node + 3)
+
         self.epoch_current = 0
 
     def forward(self, batch):
@@ -102,6 +105,9 @@ class TrainerG2PT(pl.LightningModule):
         output_global = self.model_core(global_embedding)
 
         edges_output = output_global[:, self.nb_max_node :]
+
+        # apply the projection
+        edges_output = self.head(edges_output)
 
         return edges_int[:, 1:], edges_output[:, 1:, :]
 
@@ -188,7 +194,7 @@ class TrainerG2PT(pl.LightningModule):
 
         self.epoch_current += 1
 
-    def generation_global(self, batch_size, nb_step):
+    def generation_global(self, batch_size, nb_step, remasking="random"):
         """
         creating pur noise
         """
@@ -208,8 +214,6 @@ class TrainerG2PT(pl.LightningModule):
 
         # 2. for loop to detokenize and generate the graph
         for i in range(nb_step):
-            print(f"step {i}")
-
             # get logits prediction
             edges_append, edges_logit = self(batch)
 
@@ -223,11 +227,15 @@ class TrainerG2PT(pl.LightningModule):
 
             # sample from softmax
             softmax_p = torch.nn.functional.softmax(edges_logit, dim=2)
-            
-            # sampling from softmax
-            max_proba_index = torch.multinomial(softmax_p, num_samples=1) 
 
-            max_logit = torch.max(edges_logit, dim=2)[
+            # sampling from softmax
+            max_proba_index = torch.multinomial(softmax_p.flatten(0, 1), num_samples=1)
+
+            max_proba_index = max_proba_index.reshape(
+                batch_size, self.nb_max_node * self.edges_to_node_ratio * 2
+            )
+
+            max_logit = torch.max(softmax_p, dim=2)[
                 0
             ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
 
@@ -257,8 +265,6 @@ class TrainerG2PT(pl.LightningModule):
             batch["noisy_edges"] = new_noisy_value
 
         output = batch["noisy_edges"].long()
-
-        breakpoint()
 
         self.plot_graph(output, self.nb_max_node)
 
