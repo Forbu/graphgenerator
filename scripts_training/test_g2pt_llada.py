@@ -93,7 +93,7 @@ if __name__ == "__main__":
 
     training_dataset = DatasetGrid(10000, 10, 10)
     # we create the dataloader
-    training_dataloader = DataLoader(training_dataset, batch_size=8, shuffle=False)
+    training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 
     logger = TensorBoardLogger("tb_logs/", name="g2pt_grid")
     #logger = WandbLogger(project="g2pt_grid")
@@ -103,6 +103,7 @@ if __name__ == "__main__":
         max_time={"hours": 3},
         logger=logger,
         accumulate_grad_batches=4,
+        #fast_dev_run=True,
     )
 
     # train the model

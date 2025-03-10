@@ -29,7 +29,7 @@ class TrainerG2PT(pl.LightningModule):
         out_dim_node=1,
         hidden_dim=386,
         nb_max_node=100,
-        edges_to_node_ratio=10,
+        edges_to_node_ratio=5,
     ):
         super().__init__()
 
@@ -80,7 +80,8 @@ class TrainerG2PT(pl.LightningModule):
             dim=1,
         )  # dim is (batch_size, 1 + num_nodes * self.edges_to_node_ratio * 2)
 
-        cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
+        #cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
+        cutting_shape = self.nb_max_node * self.edges_to_node_ratio * 2 + self.nb_max_node
         global_embedding = global_embedding[:, : (cutting_shape + 2)]
 
         # position integer 0 -> (cutting_shape + 2)
@@ -159,6 +160,8 @@ class TrainerG2PT(pl.LightningModule):
         batch["noisy_edges"] = (1 - masking) * edges_elements + masking * (
             self.nb_max_node + 2
         )
+        
+        batch["noisy_edges"] = batch["noisy_edges"].long()
 
         batch["edges"] = edges_elements
 
@@ -169,7 +172,7 @@ class TrainerG2PT(pl.LightningModule):
         """
         on the end on epoch
         """
-        if self.epoch_current % 10 == 0:
+        if self.epoch_current % 2 == 0:
             with torch.no_grad():
                 self.generation_global(2, 100)
 
@@ -185,18 +188,26 @@ class TrainerG2PT(pl.LightningModule):
         # 1. we mask everything first
         time_stamp = torch.zeros((batch_size), device=self.device)  # full masking
         edges_element = torch.ones(
-            (batch_size, self.nb_max_node * self.edges_to_node_ratio, 2),
+            (batch_size, self.nb_max_node * self.edges_to_node_ratio * 2),
             device=self.device,
         )
 
         batch = self.token_masking(edges_element, batch_size, time_stamp)
 
-        delta_choose = int(1 // nb_step * self.nb_max_node * self.edges_to_node_ratio)
+        delta_choose = (self.nb_max_node * self.edges_to_node_ratio * 2) // nb_step
 
         # 2. for loop to detokenize and generate the graph
         for i in range(nb_step):
             # get logits prediction
             edges_append, edges_logit = self(batch)
+
+            # edges logit are dim (batch_size, num_nodes*self.edges_to_node_ratio, vocab_size)
+            # we put all the edges logit from non-mask token at -1000.
+            non_mask_token = batch["noisy_edges"] != (self.nb_max_node + 2)
+
+            delta_choose = (~non_mask_token).sum(dim=1)[0] // (
+                nb_step - i
+            )  # number of tokens to choose
 
             # greedy sampling (take the N highest probability)
             max_proba_index = torch.argmax(
@@ -207,11 +218,26 @@ class TrainerG2PT(pl.LightningModule):
                 0
             ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
 
+            # we don't choose the mask token
+            max_logit = torch.where(
+                non_mask_token, max_logit, torch.full_like(max_logit, -1000))
+
             # now we want to retrieve the topk values
             _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
 
             new_noisy_value = batch["noisy_edges"].clone()
-            new_noisy_value[indices] = max_proba_index[indices]
+
+            # create the indice map
+            index_batch = (
+                torch.arange(batch_size, device=self.device)
+                .unsqueeze(1)
+                .repeat(1, delta_choose)
+            )
+
+            # update the noisy value
+            new_noisy_value[index_batch.flatten().long(), indices.flatten().long()] = (
+                max_proba_index[index_batch.flatten().long(), indices.flatten().long()]
+            )
 
             # replace the noisy value with the new value
             batch["noisy_edges"] = new_noisy_value
@@ -234,9 +260,10 @@ class TrainerG2PT(pl.LightningModule):
 
         G = nx.Graph()
         for i in range(U.shape[0]):
-            if U[i] == nb_max_node or V[i] == nb_max_node:
-                break
-            G.add_edge(U[i], V[i])
+            if U[i] >= nb_max_node or V[i] >= nb_max_node:
+                pass
+            else:
+                G.add_edge(U[i], V[i])
 
         pos = nx.spring_layout(G, seed=42)
 
