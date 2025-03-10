@@ -221,12 +221,11 @@ class TrainerG2PT(pl.LightningModule):
                 nb_step - i
             )  # number of tokens to choose
 
-            logits_with_noise = edges_logit # add_gumbel_noise(edges_logit, temperature=1.0)
-
-            # greedy sampling (take the N highest probability)
-            max_proba_index = torch.argmax(
-                logits_with_noise, dim=2
-            )  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
+            # sample from softmax
+            softmax_p = torch.nn.functional.softmax(edges_logit, dim=2)
+            
+            # sampling from softmax
+            max_proba_index = torch.multinomial(softmax_p, num_samples=1) 
 
             max_logit = torch.max(edges_logit, dim=2)[
                 0
