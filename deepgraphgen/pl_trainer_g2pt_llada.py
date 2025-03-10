@@ -103,7 +103,7 @@ class TrainerG2PT(pl.LightningModule):
 
         edges_output = output_global[:, self.nb_max_node :]
 
-        return edges_int[:, 1:], edges_output[:, :-1, :]
+        return edges_int[:, 1:], edges_output[:, 1:, :]
 
     def training_step(self, batch, batch_idx):
         """
@@ -208,7 +208,7 @@ class TrainerG2PT(pl.LightningModule):
 
         # 2. for loop to detokenize and generate the graph
         for i in range(nb_step):
-            breakpoint()
+            print(f"step {i}")
 
             # get logits prediction
             edges_append, edges_logit = self(batch)
@@ -221,7 +221,7 @@ class TrainerG2PT(pl.LightningModule):
                 nb_step - i
             )  # number of tokens to choose
 
-            logits_with_noise = add_gumbel_noise(edges_logit, temperature=1.0)
+            logits_with_noise = edges_logit # add_gumbel_noise(edges_logit, temperature=1.0)
 
             # greedy sampling (take the N highest probability)
             max_proba_index = torch.argmax(
@@ -301,7 +301,6 @@ def add_gumbel_noise(logits, temperature):
     According to arXiv:2409.02908, for MDM, low-precision Gumbel Max improves perplexity score but reduces generation quality.
     Thus, we use float64.
     """
-    logits = logits.to(torch.float64)
-    noise = torch.rand_like(logits, dtype=torch.float64)
+    noise = torch.rand_like(logits)
     gumbel_noise = (-torch.log(noise)) ** temperature
     return logits.exp() / gumbel_noise
