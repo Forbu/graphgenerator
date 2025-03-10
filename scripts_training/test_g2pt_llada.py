@@ -32,7 +32,7 @@ class DatasetGrid(Dataset):
     Dataset class for grid_graph graphs
     """
 
-    def __init__(self, nb_graphs, nx, ny, edges_to_nodes_ratio=10):
+    def __init__(self, nb_graphs, nx, ny, edges_to_nodes_ratio=5):
         self.nb_graphs = nb_graphs
         self.nx = nx
         self.ny = ny
@@ -91,7 +91,7 @@ if __name__ == "__main__":
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(10000, 10, 10)
+    training_dataset = DatasetGrid(10000, 10, 10, edges_to_nodes_ratio=5)
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 

@@ -80,8 +80,10 @@ class TrainerG2PT(pl.LightningModule):
             dim=1,
         )  # dim is (batch_size, 1 + num_nodes * self.edges_to_node_ratio * 2)
 
-        #cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
-        cutting_shape = self.nb_max_node * self.edges_to_node_ratio * 2 + self.nb_max_node
+        # cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
+        cutting_shape = (
+            self.nb_max_node * self.edges_to_node_ratio * 2 + self.nb_max_node
+        )
         global_embedding = global_embedding[:, : (cutting_shape + 2)]
 
         # position integer 0 -> (cutting_shape + 2)
@@ -125,7 +127,7 @@ class TrainerG2PT(pl.LightningModule):
         ).squeeze(2)
 
         # mask token randomly
-        batch = self.token_masking(edges_element, batch_size)
+        batch, mask = self.token_masking(edges_element, batch_size, return_mask=True)
 
         # apply the model
         edges_append, edges_logit = self(batch)
@@ -134,14 +136,20 @@ class TrainerG2PT(pl.LightningModule):
         loss = torch.nn.functional.cross_entropy(
             edges_logit.transpose(1, 2),
             edges_append.long(),
-            reduction="mean",
+            reduction="none",
         )
+
+        # compute the loss for the masked tokens
+        loss = loss * mask.float()
+        loss = loss.sum() / mask.sum()
 
         self.log("train_loss", loss)
 
         return loss
 
-    def token_masking(self, edges_elements, batch_size, time_stamp=None):
+    def token_masking(
+        self, edges_elements, batch_size, time_stamp=None, return_mask=False
+    ):
         # in order to do some discrete diffusion we should do some noise generation
         if time_stamp is None:
             time_stamp = torch.rand((batch_size), device=self.device)
@@ -160,11 +168,13 @@ class TrainerG2PT(pl.LightningModule):
         batch["noisy_edges"] = (1 - masking) * edges_elements + masking * (
             self.nb_max_node + 2
         )
-        
+
         batch["noisy_edges"] = batch["noisy_edges"].long()
 
         batch["edges"] = edges_elements
 
+        if return_mask:
+            return batch, masking
         return batch
 
     # on the end on epoch
@@ -174,7 +184,7 @@ class TrainerG2PT(pl.LightningModule):
         """
         if self.epoch_current % 2 == 0:
             with torch.no_grad():
-                self.generation_global(2, 100)
+                self.generation_global(2, 200)
 
         self.epoch_current += 1
 
@@ -198,6 +208,8 @@ class TrainerG2PT(pl.LightningModule):
 
         # 2. for loop to detokenize and generate the graph
         for i in range(nb_step):
+            breakpoint()
+
             # get logits prediction
             edges_append, edges_logit = self(batch)
 
@@ -209,9 +221,11 @@ class TrainerG2PT(pl.LightningModule):
                 nb_step - i
             )  # number of tokens to choose
 
+            logits_with_noise = add_gumbel_noise(edges_logit, temperature=1.0)
+
             # greedy sampling (take the N highest probability)
             max_proba_index = torch.argmax(
-                edges_logit, dim=2
+                logits_with_noise, dim=2
             )  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
 
             max_logit = torch.max(edges_logit, dim=2)[
@@ -220,7 +234,8 @@ class TrainerG2PT(pl.LightningModule):
 
             # we don't choose the mask token
             max_logit = torch.where(
-                non_mask_token, max_logit, torch.full_like(max_logit, -1000))
+                non_mask_token, torch.full_like(max_logit, -1000), max_logit
+            )
 
             # now we want to retrieve the topk values
             _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
@@ -243,6 +258,8 @@ class TrainerG2PT(pl.LightningModule):
             batch["noisy_edges"] = new_noisy_value
 
         output = batch["noisy_edges"].long()
+
+        breakpoint()
 
         self.plot_graph(output, self.nb_max_node)
 
@@ -276,3 +293,15 @@ class TrainerG2PT(pl.LightningModule):
         Function used to configure the optimizer
         """
         return torch.optim.AdamW(self.parameters(), lr=0.001)
+
+
+def add_gumbel_noise(logits, temperature):
+    """
+    The Gumbel max is a method for sampling categorical distributions.
+    According to arXiv:2409.02908, for MDM, low-precision Gumbel Max improves perplexity score but reduces generation quality.
+    Thus, we use float64.
+    """
+    logits = logits.to(torch.float64)
+    noise = torch.rand_like(logits, dtype=torch.float64)
+    gumbel_noise = (-torch.log(noise)) ** temperature
+    return logits.exp() / gumbel_noise
