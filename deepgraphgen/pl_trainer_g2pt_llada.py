@@ -274,24 +274,28 @@ class TrainerG2PT(pl.LightningModule):
         """
         Function used to plot the graph
         """
+        batch_size = output.shape[0]
 
-        U = output[0, ::2].long().cpu().numpy()
-        V = output[0, 1::2].long().cpu().numpy()
+        for batch_idx in range(batch_size):
+            U = output[batch_idx, ::2].long().cpu().numpy()
+            V = output[batch_idx, 1::2].long().cpu().numpy()
 
-        # if U or V has one element that is nb_max_node we remove it
+            # if U or V has one element that is nb_max_node we remove it
 
-        G = nx.Graph()
-        for i in range(U.shape[0]):
-            if U[i] >= nb_max_node or V[i] >= nb_max_node:
-                pass
-            else:
-                G.add_edge(U[i], V[i])
+            G = nx.Graph()
+            for i in range(U.shape[0]):
+                if U[i] >= nb_max_node or V[i] >= nb_max_node:
+                    pass
+                else:
+                    G.add_edge(U[i], V[i])
 
-        pos = nx.spring_layout(G, seed=42)
+            pos = nx.spring_layout(G, seed=42)
 
-        plt.figure(figsize=(10, 10))
-        nx.draw(G, pos, with_labels=True)
-        plt.savefig("graph_visu/graph_auto.png")
+            plt.figure(figsize=(10, 10))
+            nx.draw(G, pos, with_labels=True)
+
+
+            plt.savefig("graph_visu/graph_auto_epoch_" + str(self.epoch_current) + "_" + str(batch_idx) + ".png")
 
     def configure_optimizers(self):
         """

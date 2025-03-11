@@ -93,10 +93,27 @@ The forward diffusion process also look good and the reverse too but the resulti
 > ⚠️
 > I did make some test changing the neural architecture using transformer based gnn (instead of message passing gnn) : it really make the grid generation works
 
+#### G2PT implementation
 
 Indeed when I adapt a transformer based architecture (https://arxiv.org/pdf/2501.01073) things start to work.
 
+I also tried to adapt the LLaDa setup to graph transformer (https://arxiv.org/pdf/2502.09992) with success (it works greatly).
+
 Tree and grid generation began to look like tree and grid ...
+
+Example of generation of tree like network :
+
+![image](images/graph_auto_epoch_22_1.png)
+
+## Conclusion and key takeways
+
+Important points :
+
+- graph transformer is really superior (over classic message passing gnn) in term of graph generation (especially in diffusion setup)
+
+- flattening the graph is key for performance (doing generation over edge index instead of adjacency matrix).
+
+- you can use discrete diffusion setup (llada like) : it works well.
 
 
 
