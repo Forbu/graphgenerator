@@ -14,6 +14,8 @@ import lightning.pytorch as pl
 # we create the model
 from x_transformers import Encoder
 
+from heavyball import ForeachSOAP, ForeachMuon
+
 torch.set_float32_matmul_precision("medium")
 
 
@@ -190,11 +192,11 @@ class TrainerG2PT(pl.LightningModule):
         """
         if self.epoch_current % 2 == 0:
             with torch.no_grad():
-                self.generation_global(2, 200)
+                self.generation_global(2, 200, remasking="low_entropy")
 
         self.epoch_current += 1
 
-    def generation_global(self, batch_size, nb_step, remasking="random"):
+    def generation_global(self, batch_size, nb_step, remasking="low_confidence"):
         """
         creating pur noise
         """
@@ -228,6 +230,7 @@ class TrainerG2PT(pl.LightningModule):
             # sample from softmax
             softmax_p = torch.nn.functional.softmax(edges_logit, dim=2)
 
+
             # sampling from softmax
             max_proba_index = torch.multinomial(softmax_p.flatten(0, 1), num_samples=1)
 
@@ -235,17 +238,34 @@ class TrainerG2PT(pl.LightningModule):
                 batch_size, self.nb_max_node * self.edges_to_node_ratio * 2
             )
 
-            max_logit = torch.max(softmax_p, dim=2)[
-                0
-            ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
+            if remasking == "low_confidence":
 
-            # we don't choose the mask token
-            max_logit = torch.where(
-                non_mask_token, torch.full_like(max_logit, -1000), max_logit
-            )
+                max_logit = torch.max(softmax_p, dim=2)[
+                    0
+                ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
 
-            # now we want to retrieve the topk values
-            _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
+                # we don't choose the mask token
+                max_logit = torch.where(
+                    non_mask_token, torch.full_like(max_logit, -1000), max_logit
+                )
+
+                # now we want to retrieve the topk values
+                _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
+
+
+            elif remasking == "low_entropy":
+                # we compute the entropy value for each token
+                entropy = torch.sum(softmax_p * torch.log(softmax_p), dim=2)
+
+                # we remove the mask token
+                entropy = torch.where(
+                    non_mask_token,
+                    torch.full_like(entropy, -1000),
+                    entropy,
+                )
+
+                # now we want to retrieve the topk values
+                _, indices = torch.topk(entropy, k=delta_choose, dim=1)
 
             new_noisy_value = batch["noisy_edges"].clone()
 
@@ -270,6 +290,8 @@ class TrainerG2PT(pl.LightningModule):
 
         self.train()
 
+
+
     def plot_graph(self, output, nb_max_node):
         """
         Function used to plot the graph
@@ -277,6 +299,8 @@ class TrainerG2PT(pl.LightningModule):
         batch_size = output.shape[0]
 
         for batch_idx in range(batch_size):
+            elements = set()
+
             U = output[batch_idx, ::2].long().cpu().numpy()
             V = output[batch_idx, 1::2].long().cpu().numpy()
 
@@ -289,19 +313,44 @@ class TrainerG2PT(pl.LightningModule):
                 else:
                     G.add_edge(U[i], V[i])
 
+                    # append U[i] and V[i] to the set
+                    elements.add(U[i])
+                    elements.add(V[i])
+
             pos = nx.spring_layout(G, seed=42)
 
             plt.figure(figsize=(10, 10))
-            nx.draw(G, pos, with_labels=True)
+            nx.draw(
+                G,
+                pos,
+                with_labels=True,
+                node_color=range(len(elements)),
+                cmap=plt.cm.viridis,
+            )
 
-
-            plt.savefig("graph_visu/graph_auto_epoch_" + str(self.epoch_current) + "_" + str(batch_idx) + ".png")
+            plt.savefig(
+                "graph_visu/graph_auto_epoch_"
+                + str(self.epoch_current)
+                + "_"
+                + str(batch_idx)
+                + ".png"
+            )
 
     def configure_optimizers(self):
         """
         Function used to configure the optimizer
         """
-        return torch.optim.AdamW(self.parameters(), lr=0.001)
+        optimizer = ForeachMuon(
+            self.parameters(),
+            lr=1e-3,
+            betas=(0.95, 0.95),
+            weight_decay=1e-2,
+            foreach=False,
+        )
+
+        # optimizer = torch.optim.AdamW(self.parameters(), lr=0.001)
+
+        return optimizer
 
 
 def add_gumbel_noise(logits, temperature):

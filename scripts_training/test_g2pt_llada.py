@@ -86,12 +86,15 @@ class DatasetGrid(Dataset):
 
 if __name__ == "__main__":
     # load the checkpoint
-    model = TrainerG2PT()
+    model = TrainerG2PT(edges_to_node_ratio=3)
+
+    # compile model
+    # model.compile()
 
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(10000, 10, 10, edges_to_nodes_ratio=5)
+    training_dataset = DatasetGrid(100000, 10, 10, edges_to_nodes_ratio=3)
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 
@@ -105,6 +108,7 @@ if __name__ == "__main__":
         accumulate_grad_batches=4,
         # fast_dev_run=True,
         # accelerator="cpu", # debug
+        gradient_clip_val=1.0,
     )
 
     # train the model
