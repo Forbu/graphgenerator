@@ -26,6 +26,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from deepgraphgen.pl_trainer_g2pt_llada import TrainerG2PT
 from deepgraphgen.datageneration import generate_dataset
 
+from deepgraphgen.datasets_spectre import SpectreGraphDataset
+
+
+import torch._dynamo
+
+torch._dynamo.config.suppress_errors = True
+
 
 class DatasetGrid(Dataset):
     """
@@ -39,7 +46,7 @@ class DatasetGrid(Dataset):
         self.n = nx * ny
         self.edges_to_nodes_ratio = edges_to_nodes_ratio
 
-        #self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
+        # self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
         self.list_graphs = generate_dataset("random_labeled_tree", nb_graphs, n=nx * ny)
 
     def __len__(self):
@@ -49,10 +56,10 @@ class DatasetGrid(Dataset):
         # select the graph
         graph = self.list_graphs[idx]
 
-        #permutation = torch.randperm(self.n)
+        # permutation = torch.randperm(self.n)
 
         # random rebal relabel_nodes(G, mapping)
-        #graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
+        # graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
 
         # now we need to get the nodes list (simple range from 0 to n)
         nodes = list(range(self.n))
@@ -86,7 +93,7 @@ class DatasetGrid(Dataset):
 
 if __name__ == "__main__":
     # load the checkpoint
-    model = TrainerG2PT(edges_to_node_ratio=3)
+    model = TrainerG2PT(edges_to_node_ratio=5, nb_max_node=64)
 
     # compile model
     # model.compile()
@@ -94,12 +101,19 @@ if __name__ == "__main__":
     # we chech the generation of the graph
     # out = model.generate()
 
-    training_dataset = DatasetGrid(100000, 10, 10, edges_to_nodes_ratio=3)
+    # training_dataset = DatasetGrid(100000, 10, 10, edges_to_nodes_ratio=3)
+    training_dataset = SpectreGraphDataset(
+        dataset_name="planar",
+        download_dir="/code/scripts_training/datasets",
+        nb_nodes=64,
+        edges_to_node_ratio=5,
+    )
+
     # we create the dataloader
     training_dataloader = DataLoader(training_dataset, batch_size=32, shuffle=False)
 
     logger = TensorBoardLogger("tb_logs/", name="g2pt_grid")
-    #logger = WandbLogger(project="g2pt_grid")
+    # logger = WandbLogger(project="g2pt_grid")
 
     # setup trainer
     trainer = pl.Trainer(

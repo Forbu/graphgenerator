@@ -190,9 +190,9 @@ class TrainerG2PT(pl.LightningModule):
         """
         on the end on epoch
         """
-        if self.epoch_current % 2 == 0:
+        if self.epoch_current % 200 == 0:
             with torch.no_grad():
-                self.generation_global(2, 200, remasking="low_entropy")
+                self.generation_global(2, 300, remasking="low_entropy")
 
         self.epoch_current += 1
 
@@ -342,10 +342,11 @@ class TrainerG2PT(pl.LightningModule):
         """
         optimizer = ForeachMuon(
             self.parameters(),
-            lr=1e-3,
+            lr=1e-4,
             betas=(0.95, 0.95),
             weight_decay=1e-2,
             foreach=False,
+            warmup_steps=1000,
         )
 
         # optimizer = torch.optim.AdamW(self.parameters(), lr=0.001)
