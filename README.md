@@ -105,6 +105,11 @@ Example of generation of tree like network :
 
 ![image](images/graph_auto_epoch_22_1.png)
 
+Ot planar graph network :
+
+![image](images/planar_graph_gen.png)
+
+
 ## Conclusion and key takeways
 
 Important points :

@@ -18,6 +18,7 @@ from heavyball import ForeachSOAP, ForeachMuon
 
 torch.set_float32_matmul_precision("medium")
 
+import os
 
 class TrainerG2PT(pl.LightningModule):
     """
@@ -230,7 +231,6 @@ class TrainerG2PT(pl.LightningModule):
             # sample from softmax
             softmax_p = torch.nn.functional.softmax(edges_logit, dim=2)
 
-
             # sampling from softmax
             max_proba_index = torch.multinomial(softmax_p.flatten(0, 1), num_samples=1)
 
@@ -239,7 +239,6 @@ class TrainerG2PT(pl.LightningModule):
             )
 
             if remasking == "low_confidence":
-
                 max_logit = torch.max(softmax_p, dim=2)[
                     0
                 ]  # dim is (batch_size, num_nodes*self.edges_to_node_ratio)
@@ -251,7 +250,6 @@ class TrainerG2PT(pl.LightningModule):
 
                 # now we want to retrieve the topk values
                 _, indices = torch.topk(max_logit, k=delta_choose, dim=1)
-
 
             elif remasking == "low_entropy":
                 # we compute the entropy value for each token
@@ -290,8 +288,6 @@ class TrainerG2PT(pl.LightningModule):
 
         self.train()
 
-
-
     def plot_graph(self, output, nb_max_node):
         """
         Function used to plot the graph
@@ -328,7 +324,7 @@ class TrainerG2PT(pl.LightningModule):
                 cmap=plt.cm.viridis,
             )
 
-            plt.savefig(
+            name_img = (
                 "graph_visu/graph_auto_epoch_"
                 + str(self.epoch_current)
                 + "_"
@@ -336,15 +332,32 @@ class TrainerG2PT(pl.LightningModule):
                 + ".png"
             )
 
+            plt.savefig(name_img)
+
+            # now we clean the plot
+            plt.clf()
+
+            # now we log the png image (tensorboard)
+            img = plt.imread(name_img)[:, :, :3]
+            img = img.transpose((2, 0, 1))
+
+            # we log the figure to tensorboard
+            self.logger.experiment.add_image(
+                "pred_image", img, global_step=self.global_step
+            )
+            
+            # remove the image
+            os.remove(name_img)
+
     def configure_optimizers(self):
         """
         Function used to configure the optimizer
         """
         optimizer = ForeachMuon(
             self.parameters(),
-            lr=1e-4,
+            lr=1e-3,
             betas=(0.95, 0.95),
-            weight_decay=1e-2,
+            weight_decay=1e-1,
             foreach=False,
             warmup_steps=1000,
         )

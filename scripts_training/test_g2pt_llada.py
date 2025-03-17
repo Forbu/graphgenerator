@@ -117,7 +117,7 @@ if __name__ == "__main__":
 
     # setup trainer
     trainer = pl.Trainer(
-        max_time={"hours": 3},
+        max_time={"hours": 10},
         logger=logger,
         accumulate_grad_batches=4,
         # fast_dev_run=True,
