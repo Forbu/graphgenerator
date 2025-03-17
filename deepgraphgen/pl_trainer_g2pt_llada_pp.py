@@ -20,6 +20,7 @@ torch.set_float32_matmul_precision("medium")
 
 import os
 
+
 class TrainerG2PT(pl.LightningModule):
     """
     Warper class for training
@@ -46,63 +47,55 @@ class TrainerG2PT(pl.LightningModule):
         # transformer core
         self.model_core = Encoder(dim=hidden_dim, depth=nb_layer, heads=8)
 
+        self.nb_edges = edges_to_node_ratio * nb_max_node
+
         # position embedding
         self.position_embedding = torch.nn.Embedding(
-            nb_max_node + edges_to_node_ratio * 2 * nb_max_node + 2, hidden_dim
+            nb_max_node + self.nb_edges, hidden_dim
         )
 
         # nodes embedding
         self.nodes_embedding = torch.nn.Embedding(nb_max_node + 3, hidden_dim)
 
         # projection toward the output
-        self.head = torch.nn.Linear(hidden_dim, self.nb_max_node + 3)
+        self.head_1 = torch.nn.Linear(hidden_dim, self.nb_max_node + 3)
+        self.head_2 = torch.nn.Linear(hidden_dim, self.nb_max_node + 3)
 
         self.epoch_current = 0
 
     def forward(self, batch):
+        """
+        Forward pass
+        """
         # batch["edges"] is (batch_size, num_nodes * self.edges_to_node_ratio * 2)
         batch_size = batch["edges"].shape[0]
 
         # embedding for nodes (simple vocabulary)
         nodes_embedding_range = torch.arange(self.nb_max_node, device=self.device)
 
-        # we append one token (nb_max_node + 1) at the beggining
-        global_embedding = torch.cat(
-            [
-                nodes_embedding_range.unsqueeze(0).repeat(batch_size, 1).long(),
-                torch.ones((batch_size, 1), device=self.device).long()
-                * (self.nb_max_node + 1),
-                batch["noisy_edges"].long(),
-            ],
-            dim=1,
-        )  # dim is (batch_size, num_nodes + 1 + num_nodes * self.edges_to_node_ratio * 2)
-
-        edges_int = torch.cat(
-            [
-                torch.ones((batch_size, 1), device=self.device).long()
-                * (self.nb_max_node + 1),
-                batch["edges"].long(),
-            ],
-            dim=1,
-        )  # dim is (batch_size, 1 + num_nodes * self.edges_to_node_ratio * 2)
-
-        # cutting_shape = torch.max((global_embedding != self.nb_max_node).sum(dim=1))
-        cutting_shape = (
-            self.nb_max_node * self.edges_to_node_ratio * 2 + self.nb_max_node
+        # batch["noisy_edges"].long()
+        noisy_edges = batch["noisy_edges"].reshape(
+            batch_size, self.nb_max_node * self.edges_to_node_ratio, 2
         )
-        global_embedding = global_embedding[:, : (cutting_shape + 2)]
+
+        edges_int = batch["edges"].long()
+
+        nb_positions = self.nb_max_node * self.edges_to_node_ratio + self.nb_max_node
 
         # position integer 0 -> (cutting_shape + 2)
-        position_integer = torch.arange(
-            global_embedding.shape[1], device=self.device
-        ).unsqueeze(0)
+        position_integer = torch.arange(nb_positions, device=self.device).unsqueeze(0)
+        position_integer = position_integer.repeat(batch_size, 1)
 
-        edges_int = edges_int[:, : (cutting_shape - self.nb_max_node + 2)]
+        global_embedding = self.position_embedding(position_integer)
+
+        nodes_embedding_range = self.nodes_embedding(noisy_edges)
 
         # apply embedding and position embedding AND THEN apply core
-        global_embedding = self.nodes_embedding(
-            global_embedding
-        ) + self.position_embedding(position_integer)
+        global_embedding[:, self.nb_max_node :, :] = (
+            global_embedding[:, self.nb_max_node :, :]
+            + nodes_embedding_range[:, :, 0, :]
+            + nodes_embedding_range[:, :, 1, :]
+        )
 
         # apply the transformer core
         output_global = self.model_core(global_embedding)
@@ -110,9 +103,17 @@ class TrainerG2PT(pl.LightningModule):
         edges_output = output_global[:, self.nb_max_node :]
 
         # apply the projection
-        edges_output = self.head(edges_output)
+        edges_output_1 = self.head_1(edges_output)
+        edges_output_2 = self.head_2(edges_output)
 
-        return edges_int[:, 1:], edges_output[:, 1:, :]
+        # now we concatenate
+        edges_output = torch.stack([edges_output_1, edges_output_2], dim=-1).reshape(
+            edges_output.shape[0],
+            self.nb_max_node * self.edges_to_node_ratio * 2,
+            self.nb_max_node + 3,
+        )
+
+        return edges_int, edges_output
 
     def training_step(self, batch, batch_idx):
         """
@@ -138,6 +139,8 @@ class TrainerG2PT(pl.LightningModule):
         # mask token randomly
         batch, mask = self.token_masking(edges_element, batch_size, return_mask=True)
 
+        # breakpoint()
+
         # apply the model
         edges_append, edges_logit = self(batch)
 
@@ -153,6 +156,10 @@ class TrainerG2PT(pl.LightningModule):
         loss = loss.sum() / mask.sum()
 
         self.log("train_loss", loss)
+
+        if self.global_step % 100 == 0:
+            with torch.no_grad():
+                self.generation_global(2, 300, remasking="low_entropy")
 
         return loss
 
@@ -191,7 +198,7 @@ class TrainerG2PT(pl.LightningModule):
         """
         on the end on epoch
         """
-        if self.epoch_current % 200 == 0:
+        if self.epoch_current % 100 == 0:
             with torch.no_grad():
                 self.generation_global(2, 300, remasking="low_entropy")
 
@@ -215,9 +222,13 @@ class TrainerG2PT(pl.LightningModule):
 
         delta_choose = (self.nb_max_node * self.edges_to_node_ratio * 2) // nb_step
 
+        print("begin generation")
+
         # 2. for loop to detokenize and generate the graph
         for i in range(nb_step):
             # get logits prediction
+            # print("begin step", i)
+
             edges_append, edges_logit = self(batch)
 
             # edges logit are dim (batch_size, num_nodes*self.edges_to_node_ratio, vocab_size)
@@ -281,6 +292,8 @@ class TrainerG2PT(pl.LightningModule):
 
             # replace the noisy value with the new value
             batch["noisy_edges"] = new_noisy_value
+
+        print("end generation")
 
         output = batch["noisy_edges"].long()
 

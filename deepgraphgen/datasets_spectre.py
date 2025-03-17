@@ -76,11 +76,11 @@ class SpectreGraphDataset(Dataset):
 
         nb_edges = edges.shape[1]
 
-        # random permutation on edges index
-        permutation = torch.randperm(nb_nodes)
+        # # random permutation on edges index
+        # permutation = torch.randperm(nb_nodes)
 
-        # # random rebal relabel_nodes(G, mapping)
-        edges.cpu().apply_(lambda val: permutation[val])
+        # # # random rebal relabel_nodes(G, mapping)
+        # edges.cpu().apply_(lambda val: permutation[val])
 
         if nb_edges < nb_nodes * self.edges_to_node_ratio:
             pad_element = (
@@ -155,3 +155,20 @@ def download_url(
             f.write(chunk)
 
     return path
+
+
+from torch.utils.data import IterableDataset
+
+
+class DatasetSpectreIterableDataset(IterableDataset):
+    def __init__(self, dataset: Dataset):
+        super().__init__()  # Initialize the parent class (IterableDataset)
+        self.dataset = dataset
+
+    def __iter__(self):
+        i = 0
+        while True:
+            yield self.dataset[
+                i % len(self.dataset)
+            ]  # Fetch data using the original Dataset's __getitem__
+            i += 1
