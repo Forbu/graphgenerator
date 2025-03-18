@@ -115,7 +115,7 @@ if __name__ == "__main__":
     iterdataset = DatasetSpectreIterableDataset(dataset=training_dataset)
 
     # we create the dataloader
-    training_dataloader = DataLoader(iterdataset, batch_size=32)
+    training_dataloader = DataLoader(iterdataset, batch_size=64)
 
     logger = TensorBoardLogger("tb_logs/", name="g2pt_grid")
     # logger = WandbLogger(project="g2pt_grid")

@@ -92,7 +92,7 @@ class TrainerG2PT(pl.LightningModule):
 
         # apply embedding and position embedding AND THEN apply core
         global_embedding[:, self.nb_max_node :, :] = (
-            global_embedding[:, self.nb_max_node :, :]
+            #global_embedding[:, self.nb_max_node :, :]
             + nodes_embedding_range[:, :, 0, :]
             + nodes_embedding_range[:, :, 1, :]
         )
@@ -157,7 +157,7 @@ class TrainerG2PT(pl.LightningModule):
 
         self.log("train_loss", loss)
 
-        if self.global_step % 100 == 0:
+        if self.global_step % 200 == 0:
             with torch.no_grad():
                 self.generation_global(2, 300, remasking="low_entropy")
 

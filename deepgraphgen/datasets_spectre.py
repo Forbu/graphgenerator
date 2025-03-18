@@ -77,10 +77,10 @@ class SpectreGraphDataset(Dataset):
         nb_edges = edges.shape[1]
 
         # # random permutation on edges index
-        # permutation = torch.randperm(nb_nodes)
+        permutation = torch.randperm(nb_nodes)
 
         # # # random rebal relabel_nodes(G, mapping)
-        # edges.cpu().apply_(lambda val: permutation[val])
+        edges.cpu().apply_(lambda val: permutation[val])
 
         if nb_edges < nb_nodes * self.edges_to_node_ratio:
             pad_element = (

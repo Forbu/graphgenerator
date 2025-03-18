@@ -5,4 +5,4 @@ apt update
 apt-get -y install build-essential
 
 cd /app/data/
-python3 -m scripts_training.test_g2pt_llada
+python3 -m scripts_training.test_g2pt_llada_pp
