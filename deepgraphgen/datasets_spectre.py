@@ -8,6 +8,9 @@ from torch.utils.data import Dataset
 
 from torch_geometric.data import InMemoryDataset
 
+import networkx as nx
+from networkx import convert_node_labels_to_integers, bfs_edges, relabel_nodes
+
 
 class SpectreGraphDataset(Dataset):
     def __init__(
@@ -32,6 +35,8 @@ class SpectreGraphDataset(Dataset):
 
         # preprocess the dataset
         self.preprocess()
+
+        #
 
     def download(self):
         """
@@ -172,3 +177,114 @@ class DatasetSpectreIterableDataset(IterableDataset):
                 i % len(self.dataset)
             ]  # Fetch data using the original Dataset's __getitem__
             i += 1
+
+
+class SpectreGraphDatasetV2(Dataset):
+    def __init__(
+        self,
+        dataset_name,
+        download_dir,
+        nb_nodes=64,
+        edges_to_node_ratio=5,
+    ):
+        super().__init__()
+        self.file_mapping = {
+            "sbm": "sbm_200.pt",
+            "planar": "planar_64_200.pt",
+            "comm20": "community_12_21_100.pt",
+        }
+        self.dataset_name = dataset_name
+        self.download_dir = download_dir
+        self.edges_to_node_ratio = edges_to_node_ratio
+
+        # download the dataset
+        self.download()
+
+        # preprocess the dataset
+        self.preprocess()
+
+    def download(self):
+        """
+        Download raw qm9 files. Taken from PyG QM9 class
+        """
+        if self.dataset_name == "sbm":
+            raw_url = "https://raw.githubusercontent.com/KarolisMart/SPECTRE/main/data/sbm_200.pt"
+        elif self.dataset_name == "planar":
+            raw_url = "https://raw.githubusercontent.com/KarolisMart/SPECTRE/main/data/planar_64_200.pt"
+        elif self.dataset_name == "comm20":
+            raw_url = "https://raw.githubusercontent.com/KarolisMart/SPECTRE/main/data/community_12_21_100.pt"
+        else:
+            raise ValueError(f"Unknown dataset {self.dataset_name}")
+
+        if os.path.exists(
+            os.path.join(self.download_dir, self.file_mapping[self.dataset_name])
+        ):
+            return
+
+        file_path = download_url(raw_url, self.download_dir)
+
+    def preprocess(self):
+        self.list_graph = []
+
+        adjs, eigvals, eigvecs, n_nodes, max_eigval, min_eigval, same_sample, n_max = (
+            torch.load(
+                os.path.join(self.download_dir, self.file_mapping[self.dataset_name])
+            )
+        )
+
+        for i in range(len(adjs)):
+            adjs[i], _ = torch_geometric.utils.dense_to_sparse(adjs[i])
+
+            # convert the adjacency matrix to a networkx graph
+            G = nx.Graph()
+
+            G.add_edges_from(zip(adjs[i].T[:, 0].tolist(), adjs[i].T[:, 1].tolist()))
+            # calculate the number of nodes in the graph
+
+            self.list_graph.append(G)
+
+        self.n_nodes = n_nodes
+
+    def __len__(self):
+        return len(self.list_graph)
+
+    def __getitem__(self, idx):
+        nb_nodes = self.n_nodes[idx]
+        nodes = torch.arange(self.n_nodes[idx])
+        graph = self.list_graph[idx]
+
+        #
+        graph = convert_node_labels_to_integers(graph)
+
+        list_edges_visited = list(bfs_edges(graph, 0))
+
+        nodes_ordering = [0] + [edge[1] for edge in list_edges_visited]
+        mapping = {node: nodes_ordering.index(node) for node in nodes_ordering}
+
+        H = relabel_nodes(graph, mapping)
+
+        edges = torch.tensor(list(H.edges)).T.long()
+        nb_edges = edges.shape[1]
+
+        # # # random permutation on edges index
+        # permutation = torch.randperm(nb_nodes)
+
+        # # # # random rebal relabel_nodes(G, mapping)
+        # edges.cpu().apply_(lambda val: permutation[val])
+
+        if nb_edges < nb_nodes * self.edges_to_node_ratio:
+            pad_element = (
+                torch.ones(
+                    (2, int(nb_nodes * self.edges_to_node_ratio) - nb_edges),
+                    dtype=torch.long,
+                )
+                * nb_nodes
+            )
+            edges = torch.cat([edges, pad_element], dim=1)
+        elif nb_edges > nb_nodes * self.edges_to_node_ratio:
+            edges = edges[:, : int(nb_nodes * self.edges_to_node_ratio)]
+
+        return {
+            "nodes": nodes,
+            "edges": edges.T,
+        }

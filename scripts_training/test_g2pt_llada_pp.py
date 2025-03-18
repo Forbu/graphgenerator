@@ -28,6 +28,7 @@ from deepgraphgen.datageneration import generate_dataset
 
 from deepgraphgen.datasets_spectre import (
     SpectreGraphDataset,
+    SpectreGraphDatasetV2,
     DatasetSpectreIterableDataset,
 )
 
@@ -105,7 +106,7 @@ if __name__ == "__main__":
     # out = model.generate()
 
     # training_dataset = DatasetGrid(100000, 10, 10, edges_to_nodes_ratio=3)
-    training_dataset = SpectreGraphDataset(
+    training_dataset = SpectreGraphDatasetV2(
         dataset_name="planar",
         download_dir="/code/scripts_training/datasets",
         nb_nodes=64,
@@ -125,8 +126,8 @@ if __name__ == "__main__":
         max_time={"hours": 10},
         logger=logger,
         accumulate_grad_batches=4,
-        # fast_dev_run=True,
-        # accelerator="cpu", # debug
+        #fast_dev_run=True,
+        #accelerator="cpu", # debug
         gradient_clip_val=1.0,
         # accelerator="cpu",
     )
