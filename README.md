@@ -120,6 +120,7 @@ Important points :
 
 - you can use discrete diffusion setup (llada like) : it works well.
 
+- Create a proper graph representation is really important : ordering nodes in BFS / DFS really improve the learning 
 
 
 
