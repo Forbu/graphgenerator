@@ -11,6 +11,65 @@ from torch_geometric.data import InMemoryDataset
 import networkx as nx
 from networkx import convert_node_labels_to_integers, bfs_edges, relabel_nodes
 
+from deepgraphgen.datageneration import generate_dataset
+
+
+class DatasetTree(Dataset):
+    """
+    Dataset class for grid_graph graphs
+    """
+
+    def __init__(self, nb_graphs, nx, ny, edges_to_nodes_ratio=5):
+        self.nb_graphs = nb_graphs
+        self.nx = nx
+        self.ny = ny
+        self.n = nx * ny
+        self.edges_to_nodes_ratio = edges_to_nodes_ratio
+
+        # self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
+        self.list_graphs = generate_dataset("random_labeled_tree", nb_graphs, n=nx * ny)
+
+    def __len__(self):
+        return self.nb_graphs
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph = self.list_graphs[idx]
+
+        # permutation = torch.randperm(self.n)
+
+        # random rebal relabel_nodes(G, mapping)
+        # graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
+
+        # now we need to get the nodes list (simple range from 0 to n)
+        nodes = list(range(self.n))
+
+        # now we need to get the edges list
+        edges_list = list(graph.edges)
+
+        # preprocessing
+        edges_list = [(i, j) for i, j in edges_list]
+        edges = torch.tensor(edges_list)
+        # convert to tensor
+        nodes = torch.tensor(nodes)
+
+        # now pad the edges to be of size n*edges_to_nodes_ratio
+        edges = torch.cat(
+            [
+                edges,
+                torch.ones(
+                    (self.n * self.edges_to_nodes_ratio - edges.shape[0], 2),
+                    dtype=torch.long,
+                )
+                * self.n,
+            ]
+        )
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
+        }
+
 
 class SpectreGraphDataset(Dataset):
     def __init__(
@@ -256,14 +315,23 @@ class SpectreGraphDatasetV2(Dataset):
         #
         graph = convert_node_labels_to_integers(graph)
 
-        list_edges_visited = list(bfs_edges(graph, 0))
+        # start from a random node
+        id_node_start = torch.randint(0, nb_nodes, (1,)).item()
 
-        nodes_ordering = [0] + [edge[1] for edge in list_edges_visited]
+        list_edges_visited = list(bfs_edges(graph, id_node_start))
+
+        nodes_ordering = [id_node_start] + [edge[1] for edge in list_edges_visited]
         mapping = {node: nodes_ordering.index(node) for node in nodes_ordering}
 
         H = relabel_nodes(graph, mapping)
 
         edges = torch.tensor(list(H.edges)).T.long()
+        nb_edges = edges.shape[1]
+
+        # sort edges according to values
+        indices = torch.argsort(edges[0, :], dim=-1)
+        edges = edges[:, indices]
+
         nb_edges = edges.shape[1]
 
         # # # random permutation on edges index
@@ -287,4 +355,61 @@ class SpectreGraphDatasetV2(Dataset):
         return {
             "nodes": nodes,
             "edges": edges.T,
+        }
+
+
+class DatasetTree(Dataset):
+    """
+    Dataset class for grid_graph graphs
+    """
+
+    def __init__(self, nb_graphs, nx, ny, edges_to_nodes_ratio=10):
+        self.nb_graphs = nb_graphs
+        self.nx = nx
+        self.ny = ny
+        self.n = nx * ny
+        self.edges_to_nodes_ratio = edges_to_nodes_ratio
+
+        # self.list_graphs = generate_dataset("watts_strogatz_graph", nb_graphs, n=nx * ny, k=2, p=0.01)
+        self.list_graphs = generate_dataset("random_labeled_tree", nb_graphs, n=nx * ny)
+
+    def __len__(self):
+        return self.nb_graphs
+
+    def __getitem__(self, idx):
+        # select the graph
+        graph = self.list_graphs[idx]
+
+        # permutation = torch.randperm(self.n)
+
+        # random rebal relabel_nodes(G, mapping)
+        # graph = nx.relabel_nodes(graph, dict(zip(graph.nodes, permutation)))
+
+        # now we need to get the nodes list (simple range from 0 to n)
+        nodes = list(range(self.n))
+
+        # now we need to get the edges list
+        edges_list = list(graph.edges)
+
+        # preprocessing
+        edges_list = [(i, j) for i, j in edges_list]
+        edges = torch.tensor(edges_list)
+        # convert to tensor
+        nodes = torch.tensor(nodes)
+
+        # now pad the edges to be of size n*edges_to_nodes_ratio
+        edges = torch.cat(
+            [
+                edges,
+                torch.ones(
+                    (self.n * self.edges_to_nodes_ratio - edges.shape[0], 2),
+                    dtype=torch.long,
+                )
+                * self.n,
+            ]
+        )
+
+        return {
+            "nodes": nodes,
+            "edges": edges,
         }
